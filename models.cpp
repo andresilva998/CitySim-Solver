@@ -3391,7 +3391,7 @@ float Model::lightsElectricConsumption(Zone* pZone) {
     }
     else return 0.f;
 
-/*
+
     // Model based on the CIBSE Code for Lighting 2009, Table 2.5
 
     // The table needs the lamp type, the task illuminance and gives the average installed power density
@@ -3401,7 +3401,7 @@ float Model::lightsElectricConsumption(Zone* pZone) {
     float powerDensity = 2.27; //pZone->getLightsPowerDensity(); // average installed power density W/(m≤ 100 lux)
 
     return (addIllum/100.f)*powerDensity*pZone->getFloorArea();
-*/
+
 
 }
 
@@ -3806,4 +3806,5 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
