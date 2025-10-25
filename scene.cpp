@@ -5519,6 +5519,31 @@ void XmlScene::writeVFText(string fileOut) {
     textFile.close();
 
 }
+void XmlScene::appendUTCIToFile(const std::string &fileOut,
+                                unsigned int day,
+                                unsigned int hour)
+{
+    // abrimos em modo append (ios::app), NÃO truncamos
+    std::fstream textFile(fileOut.c_str(),
+                          std::ios::out | std::ios::binary | std::ios::app);
+
+    // Se quiseres escrever o cabeçalho só na primeira vez,
+    // podes tratar isso externamente. Aqui assumo que já existe ficheiro ou que tu controlas.
+
+    // Para cada edifício no district, escrever: dia, hora, buildingID, UTCI
+    for (unsigned int j = 0; j < pDistrict->getnBuildings(); ++j) {
+        Building* pB = pDistrict->getBuilding(j);
+
+        textFile
+            << day  << "\t"
+            << hour << "\t"
+            << pB->getId() << "(" << pB->getKey() << ")\t"
+            << pB->getUTCI()  // <-- valor que foi calculado por Model::computeCMIndices
+            << "\n";
+    }
+
+    textFile.close();
+}
 
 void XmlScene::writeInertiaText(string fileOut) {
 
