@@ -382,8 +382,8 @@ void Model::ThermalStepImplicitTemperature(Building *pBuilding, Climate* pClimat
 
         // *** determination of the lights state and electric consumption *** //
         // DP : commented for now, create trouble when DayLight is not computed (see doDayLightSim parameter of XmlScene::simulateTimeStep) // Cognet: Dapeng has removed this, should it be put back?
-        //Model::lightAction_Threshold(pBuilding->getZone(i));
-        //pBuilding->addElectricConsumption(Model::lightsElectricConsumption(pBuilding->getZone(i)));
+        Model::lightAction_Threshold(pBuilding->getZone(i));
+        pBuilding->addElectricConsumption(Model::lightsElectricConsumption(pBuilding->getZone(i)));
 
         // *** calculation of UA, which depends on the VdotVent *** -> in getUA() //
 
@@ -3806,3 +3806,4 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
