@@ -1,5 +1,8 @@
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
+#include <cstring>
+#include <string>
 
 #include "district.h"
 #include "building.h"
@@ -903,20 +906,56 @@ Building::Building(TiXmlHandle hdl, District* pDistrict):pDistrict(pDistrict),lo
 
             const TiXmlElement* zoneElement = hdl.ChildElement("Zone",zoneIndex).ToElement();
             const char* lightingPowerDensityAttr = nullptr;
+            const char* lightingPowerDensityText = nullptr;
+            auto normalizeName = [](const char* rawName) {
+                std::string normalized;
+                if (!rawName) {
+                    return normalized;
+                }
+                std::size_t length = std::strlen(rawName);
+                normalized.reserve(length);
+                for (std::size_t index = 0; index < length; ++index) {
+                    unsigned char ch = static_cast<unsigned char>(rawName[index]);
+                    if (ch == '_' || ch == '-' || std::isspace(static_cast<int>(ch))) {
+                        continue;
+                    }
+                    normalized.push_back(static_cast<char>(std::tolower(static_cast<int>(ch))));
+                }
+                return normalized;
+            };
+            auto isLightingPowerDensityName = [](const std::string& normalized) {
+                return normalized == "lightingpowerdensity" ||
+                       normalized == "lightspowerdensity" ||
+                       normalized == "lightpowerdensity";
+            };
             if (zoneElement) {
                 for (const TiXmlAttribute* attribute = zoneElement->FirstAttribute();
                      attribute && !lightingPowerDensityAttr;
                      attribute = attribute->Next()) {
-                    std::string attributeName = attribute->Name();
-                    std::transform(attributeName.begin(), attributeName.end(), attributeName.begin(),
-                                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
-                    if (attributeName == "lightingpowerdensity" || attributeName == "lightspowerdensity") {
+                    std::string attributeName = normalizeName(attribute->Name());
+                    if (isLightingPowerDensityName(attributeName)) {
                         lightingPowerDensityAttr = attribute->Value();
                     }
                 }
+                if (!lightingPowerDensityAttr) {
+                    for (const TiXmlElement* child = zoneElement->FirstChildElement();
+                         child && !lightingPowerDensityText;
+                         child = child->NextSiblingElement()) {
+                        std::string elementName = normalizeName(child->Value());
+                        if (isLightingPowerDensityName(elementName)) {
+                            lightingPowerDensityText = child->GetText();
+                        }
+                    }
+                }
             }
-            if (lightingPowerDensityAttr) {
-                float lightingPowerDensity = to<float>(lightingPowerDensityAttr);
+            auto parseLightingPowerDensity = [](const char* value) {
+                std::string sanitized = value ? std::string(value) : std::string();
+                std::replace(sanitized.begin(), sanitized.end(), ',', '.');
+                return sanitized.empty() ? 0.f : to<float>(sanitized);
+            };
+            if (lightingPowerDensityAttr || lightingPowerDensityText) {
+                float lightingPowerDensity = parseLightingPowerDensity(
+                        lightingPowerDensityAttr ? lightingPowerDensityAttr : lightingPowerDensityText);
                 zones.back()->setLightsPowerDensity(lightingPowerDensity);
                 logStream << "Zone id=" << zoneId << " lightingPowerDensity override="
                           << lightingPowerDensity << endl;
@@ -1940,5 +1979,6 @@ void Tree::writeXML(ofstream& file, string tab){
     }
     file << tab << "</Tree>" << endl;
 }
+
 
 
