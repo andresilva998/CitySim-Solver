@@ -323,6 +323,7 @@ public:
     void writeAreaText(string fileOut);
     void writeVFText(string fileOut);
     void writeInertiaText(string fileOut);
+    void appendUTCIToFile(const std::string &fileOut, unsigned int day, unsigned int hour);
     void exportCumulativeRadiance();
     void exportHourlyRadiance();
     // comparison with Radiance for the internal illuminance
@@ -333,3 +334,4 @@ public:
 
 };
 #endif
+
