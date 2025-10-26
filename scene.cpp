@@ -4,6 +4,7 @@
 #include <string>
 #include <iomanip>
 #include <limits>
+#include <cmath>
 
 #include "scene.h"
 #include "district.h"
@@ -3574,6 +3575,19 @@ void XmlScene::computeComfort(unsigned int day, unsigned int hour) {
         Model::computeCMIndices(pDistrict->getBuilding(i),pClimate,day,hour);
     }
 
+      for (forward_list<Ground*>::iterator itGround = pDistrict->getGrounds()->begin();
+         itGround != pDistrict->getGrounds()->end(); ++itGround) {
+        Ground* ground = *itGround;
+        if (!ground) {
+            continue;
+        }
+
+        const float utci = Model::computeGroundUTCI(ground, pClimate, day, hour);
+        if (std::isfinite(utci)) {
+            ground->setUTCI(utci);
+        }
+    }
+
     return;
 }
 
@@ -3722,7 +3736,8 @@ void XmlScene::initialiseSimulationParameters() {
     simulationIndex=0;
     preTimeStepsSimulated=0;
     preTimeSteps2Simulated=0;
-
+    groundUTCIFileInitialised = false;
+  
 }
 
 void XmlScene::simulateTimeStep(int day, int hour, bool preCond, bool radOnly, bool doDayLightSim){
@@ -3748,6 +3763,10 @@ void XmlScene::simulateTimeStep(int day, int hour, bool preCond, bool radOnly, b
     }
 
     computeComfort(day,hour);
+
+    if (!preCond && pDistrict->getnGrounds() > 0) {
+        appendGroundUTCIToFile(inputFile.substr(0, inputFile.size()-4) + "_GroundUTCI.out", day, hour);
+    }
 
     if (preCond){
         ++preTimeStepsSimulated;
@@ -4040,6 +4059,9 @@ void XmlScene::eraseResults(unsigned int keepValue, bool eraseAllResults) {
         (*it)->eraseShortWaveIrradiance(keepValue);
         (*it)->eraseEnvironmentalTemperature(keepValue);
         (*it)->erase_hc(keepValue);
+        if (eraseAllResults) {
+            (*it)->eraseUTCI(keepValue);
+        }      
     }
 
 //beginning of contents added by Dapeng // Cognet: Adapted to new code.
@@ -5550,6 +5572,41 @@ void XmlScene::appendUTCIToFile(const std::string &fileOut,
     textFile.close();
 }
 
+void XmlScene::appendGroundUTCIToFile(const std::string &fileOut,
+                                      unsigned int day,
+                                      unsigned int hour)
+{
+    if (!groundUTCIFileInitialised) {
+        std::ofstream headerOut(fileOut.c_str(), std::ios::out | std::ios::trunc);
+        if (!headerOut.is_open()) throw(string("Cannot open file: ") + fileOut);
+        headerOut << "#day\thour\tgroundId\tUTCI(celsius)" << std::endl;
+        headerOut.close();
+        groundUTCIFileInitialised = true;
+    }
+
+    std::fstream textFile(fileOut.c_str(), std::ios::out | std::ios::app);
+    if (!textFile.is_open()) throw(string("Cannot open file: ") + fileOut);
+
+    for (forward_list<Ground*>::iterator it = pDistrict->getGrounds()->begin();
+         it != pDistrict->getGrounds()->end(); ++it) {
+        Ground* ground = *it;
+        if (!ground) continue;
+
+        const unsigned int entries = ground->getUTCIEntries();
+        if (entries == 0u) continue;
+
+        textFile << day << "\t"
+                 << hour << "\t"
+                 << ground->getId();
+        if (!ground->getKey().empty()) {
+            textFile << "(" << ground->getKey() << ")";
+        }
+        textFile << "\t" << ground->getUTCI(entries - 1u) << "\n";
+    }
+
+    textFile.close();
+}
+
 void XmlScene::writeInertiaText(string fileOut) {
 
     // open the binary file
@@ -5725,8 +5782,8 @@ void XmlScene::exportSkyRadFile(string skyRadFile, float *lv) {
 size_t XmlScene::memoryUsage() {                    // DP: modified to take into account vectors that are not emptied
     // add the obstructing surfaces' 4 vectors of float (SW)
     size_t bytes = pDistrict->getnSurfaces()*sizeof(float)*1*(timeStepsSimulated+preTimeStepsSimulated);
-    // add the ground surfaces' 4 vectors of float (SW,DLout,LW,TS)
-    bytes += pDistrict->getnGrounds()*sizeof(float)*4*(timeStepsSimulated+preTimeStepsSimulated);
+    // add the ground surfaces' 5 vectors of float (SW,DLout,LW,TS,UTCI)
+    bytes += pDistrict->getnGrounds()*sizeof(float)*5*(timeStepsSimulated+preTimeStepsSimulated);
     // add the tree surfaces results
     for (size_t treeIndex=0; treeIndex<pDistrict->getnTrees(); ++treeIndex)
         bytes += pDistrict->getTree(treeIndex)->getnSurfaces()*sizeof(float)*3*(timeStepsSimulated+preTimeStepsSimulated); // TS, SW and LW
