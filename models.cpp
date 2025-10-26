@@ -102,6 +102,11 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
         pBuilding->getZone(i)->setOccupantsCountAndActivity(day,hour);
         // JK - 10.07.2015: Note to be added to Lc: the gains due to lights
 
+        // *** determination of the lights state and electric consumption *** //
+        Model::lightAction_Threshold(pBuilding->getZone(i));
+        float lightingEnergy = Model::lightsElectricConsumption(pBuilding->getZone(i));
+        pBuilding->addElectricConsumption(lightingEnergy);
+
         //cerr << "Building id= " << pBuilding->getId() << "\t";
         //cerr << "Persons: " << pBuilding->getZone(i)->getOccupantsNumber() << "\tFraction present: " << pBuilding->getZone(i)->getOccupantsFraction(day,hour) << "\tLc: " << Lc << endl;
 
@@ -110,8 +115,8 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
 
         // saving the internal gains in a vector (except the Qs)
         pBuilding->getZone(i)->setQi(pBuilding->getZone(i)->getQsun2() + pBuilding->getZone(i)->getConvectiveInternalHeatGains() + pBuilding->getZone(i)->getRadiativeInternalHeatGains());
-
-        for (unsigned int j=0;j<pBuilding->getZone(i)->getnNodes();j++) {
+        
+		for (unsigned int j=0;j<pBuilding->getZone(i)->getnNodes();j++) {
 
             if (pBuilding->getZone(i)->getnT(j) == 0) T[Thermal_getMatrixPosition(pBuilding,i)+j]=15.0*pBuilding->getZoneC(i,j);
             else T[Thermal_getMatrixPosition(pBuilding,i)+j]=pBuilding->getZoneT(i,j)*pBuilding->getZoneC(i,j);
@@ -380,12 +385,7 @@ void Model::ThermalStepImplicitTemperature(Building *pBuilding, Climate* pClimat
 
 //        cout << "VdotVent: " << 3600.f*pBuilding->getZone(i)->getVdotVent() << endl;
 
-        // *** determination of the lights state and electric consumption *** //
-        // DP : commented for now, create trouble when DayLight is not computed (see doDayLightSim parameter of XmlScene::simulateTimeStep) // Cognet: Dapeng has removed this, should it be put back?
-        Model::lightAction_Threshold(pBuilding->getZone(i));
-        pBuilding->addElectricConsumption(Model::lightsElectricConsumption(pBuilding->getZone(i)));
-
-        // *** calculation of UA, which depends on the VdotVent *** -> in getUA() //
+       // *** calculation of UA, which depends on the VdotVent *** -> in getUA() //
 
         // show Kappa1 et Kappa2
 //        cerr << "Kappa1: " << pBuilding->getZone(i)->getKappa1() << "\tKappa2: " << pBuilding->getZone(i)->getKappa2() << endl;
@@ -746,8 +746,8 @@ void Model::ThermalStepExplicitTemperature(Building *pBuilding, Climate* pClimat
 
             // *** determination of the lights state and electric consumption *** //
             // DP : commented for now, create trouble when DayLight is not computed (see doDayLightSim parameter of XmlScene::simulateTimeStep)
-            Model::lightAction_Lightswitch2002(pBuilding->getZone(i), day, hour, step2);
-            pBuilding->addElectricConsumption(Model::lightsElectricConsumption(pBuilding->getZone(i)));
+            Model::lightAction_Lightswitch2002(pBuilding->getZone(i), day, hour, step2);␊
+            pBuilding->addElectricConsumption(Model::lightsElectricConsumption(pBuilding->getZone(i), static_cast<float>(Model::dt2)));
 
             // *** calculation of UAm which depends on VdotVent *** -> in getUA() /
 
@@ -3381,15 +3381,35 @@ void Model::lightAction_Threshold(Zone* pZone) {
 
 }
 
-float Model::lightsElectricConsumption(Zone* pZone) {
+float Model::lightsElectricConsumption(Zone* pZone, float timeStepSeconds) {
+
+    if (pZone->getLightsState() <= 0.f) {
+        return 0.f;
+    }
 
     // suppose a perfect dimming system
-    if (pZone->getLightsState() > 0.f) {
+    float installedPower = pZone->getLightsPowerDensity() * pZone->getFloorArea();
+    float dimmedPower = 0.f;
+    float threshold = pZone->getLightsThreshold();
+    if (threshold <= 0.f) {
+        dimmedPower = installedPower;
+    }
+    else {
         // lights ON
         // suppose a linear power dimming for the lights
-        return (1.f - max(pZone->getTotalInternalIlluminance0()/pZone->getLightsThreshold(),1.f))*pZone->getLightsPowerDensity()*pZone->getFloorArea();
+        float dimmingRatio = pZone->getTotalInternalIlluminance0() / threshold;
+        dimmedPower = (1.f - min(dimmingRatio, 1.f)) * installedPower;
     }
-    else return 0.f;
+
+    if (timeStepSeconds > 0.f) {
+        float energy = dimmedPower * timeStepSeconds;
+        if (dimmedPower > 0.f) {
+            pZone->addLightingInternalHeatGains(dimmedPower * 0.45f, dimmedPower * 0.3f);
+        }
+        return energy;
+    }
+
+    return 0.f;
 
 
     // Model based on the CIBSE Code for Lighting 2009, Table 2.5
@@ -3806,6 +3826,7 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
 
 
