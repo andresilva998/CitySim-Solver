@@ -181,6 +181,8 @@ private:
     // far field obstructions
     vector<double> farFieldOccludedPatchFraction;
 
+    bool groundUTCIFileInitialised = false;
+
     #ifdef FMI
     // the FMU
     fmi1_import_t* fmu;
@@ -324,6 +326,7 @@ public:
     void writeVFText(string fileOut);
     void writeInertiaText(string fileOut);
     void appendUTCIToFile(const std::string &fileOut, unsigned int day, unsigned int hour);
+    void appendGroundUTCIToFile(const std::string &fileOut, unsigned int day, unsigned int hour);
     void exportCumulativeRadiance();
     void exportHourlyRadiance();
     // comparison with Radiance for the internal illuminance
@@ -334,4 +337,5 @@ public:
 
 };
 #endif
+
 
