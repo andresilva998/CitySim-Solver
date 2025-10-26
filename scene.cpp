@@ -5534,11 +5534,16 @@ void XmlScene::appendUTCIToFile(const std::string &fileOut,
     for (unsigned int j = 0; j < pDistrict->getnBuildings(); ++j) {
         Building* pB = pDistrict->getBuilding(j);
 
+        const unsigned int utciEntries = pB->getUTCIEntries();
+        if (utciEntries == 0u) {
+            continue;
+        }
+    
         textFile
             << day  << "\t"
             << hour << "\t"
             << pB->getId() << "(" << pB->getKey() << ")\t"
-            << pB->getUTCI()  // <-- valor que foi calculado por Model::computeCMIndices
+           << pB->getUTCI(utciEntries - 1u)  // <-- valor que foi calculado por Model::computeCMIndices
             << "\n";
     }
 
