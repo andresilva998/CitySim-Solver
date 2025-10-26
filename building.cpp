@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <cctype>
+
 #include "district.h"
 #include "building.h"
 #include "zone.h"
@@ -898,9 +901,29 @@ Building::Building(TiXmlHandle hdl, District* pDistrict):pDistrict(pDistrict),lo
                 zones.back()->setKpsi(to<float>(hdl.ChildElement("Zone",zoneIndex).ToElement()->Attribute("psi")));
             }
 
-            if (hdl.ChildElement("Zone",zoneIndex).ToElement()->Attribute("lightingPowerDensity")) {
-                zones.back()->setLightsPowerDensity(
-                    to<float>(hdl.ChildElement("Zone",zoneIndex).ToElement()->Attribute("lightingPowerDensity")));
+            const TiXmlElement* zoneElement = hdl.ChildElement("Zone",zoneIndex).ToElement();
+            const char* lightingPowerDensityAttr = nullptr;
+            if (zoneElement) {
+                for (const TiXmlAttribute* attribute = zoneElement->FirstAttribute();
+                     attribute && !lightingPowerDensityAttr;
+                     attribute = attribute->Next()) {
+                    std::string attributeName = attribute->Name();
+                    std::transform(attributeName.begin(), attributeName.end(), attributeName.begin(),
+                                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+                    if (attributeName == "lightingpowerdensity" || attributeName == "lightspowerdensity") {
+                        lightingPowerDensityAttr = attribute->Value();
+                    }
+                }
+            }
+            if (lightingPowerDensityAttr) {
+                float lightingPowerDensity = to<float>(lightingPowerDensityAttr);
+                zones.back()->setLightsPowerDensity(lightingPowerDensity);
+                logStream << "Zone id=" << zoneId << " lightingPowerDensity override="
+                          << lightingPowerDensity << endl;
+            } else {
+                logStream << "Zone id=" << zoneId
+                          << " lightingPowerDensity attribute missing; defaulting to 0 W/m^2"
+                          << endl;
             }
 
             // adds the Tmin and Tmax to the zone if they exist in the Tag Zone or take it from the building itself
@@ -1917,4 +1940,5 @@ void Tree::writeXML(ofstream& file, string tab){
     }
     file << tab << "</Tree>" << endl;
 }
+
 
