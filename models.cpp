@@ -744,10 +744,11 @@ void Model::ThermalStepExplicitTemperature(Building *pBuilding, Climate* pClimat
             }
             else pBuilding->getZone(i)->setVdotVent(0.f);
 
-            // *** determination of the lights state and electric consumption *** //
-            // DP : commented for now, create trouble when DayLight is not computed (see doDayLightSim parameter of XmlScene::simulateTimeStep)
-            Model::lightAction_Lightswitch2002(pBuilding->getZone(i), day, hour, step2);␊
-            pBuilding->addElectricConsumption(Model::lightsElectricConsumption(pBuilding->getZone(i), static_cast<float>(Model::dt2)));
+           // Determine lighting state and add the corresponding electric consumption
+            Model::lightAction_Lightswitch2002(pBuilding->getZone(i), day, hour, step2);
+            float lightingEnergy = Model::lightsElectricConsumption(
+                pBuilding->getZone(i), static_cast<float>(Model::dt2));
+            pBuilding->addElectricConsumption(lightingEnergy);
 
             // *** calculation of UAm which depends on VdotVent *** -> in getUA() /
 
@@ -3826,6 +3827,7 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
 
 
