@@ -327,6 +327,7 @@ public:
     // UTCI
     void setUTCI(float value) { UTCI.push_back(value); }
     float getUTCI(unsigned int step) { return UTCI.at(step); }
+    unsigned int getUTCIEntries() const { return static_cast<unsigned int>(UTCI.size()); }
     unsigned int getUTCIcount() {
         // computes the average over all the time steps
         unsigned int UTCIcount = 0;
@@ -513,3 +514,4 @@ public:
 };
 
 #endif
+
