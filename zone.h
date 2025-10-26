@@ -258,6 +258,12 @@ public:
     unsigned int getNightVentilationEnd() { return nightVentilationEnd; }
     void setNightVentilationEnd(unsigned int value) { nightVentilationEnd = value; }
 
+    void setRadiativeInternalHeatGains(float watts) { Lr = watts; }
+    void setConvectiveInternalHeatGains(float watts) { Lc = watts; }
+    void addLightingInternalHeatGains(float convectiveWatts, float radiativeWatts) {
+        Lc += convectiveWatts;
+        Lr += radiativeWatts;
+    }
     float getRadiativeInternalHeatGains() { return Lr; }
     float getConvectiveInternalHeatGains() { return Lc; }
 
@@ -1093,4 +1099,5 @@ class ZoneN : public Zone {
 };
 
 #endif
+
 
