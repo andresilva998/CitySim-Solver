@@ -883,6 +883,9 @@ private:
             do {
                 string attrib;
                 hdl.ToElement()->QueryStringAttribute(string("p"+toString(j)).c_str(), &attrib);
+                // Each entry is a probability or weighting for this hour; using 1 keeps the
+                // activity active for the whole hour, leaving the device profile to modulate
+                // the final usage probability.
                 profile.push_back(to<float>(attrib));
 
             } while ( hdl.ToElement()->Attribute("p"+toString(++j)) );
@@ -1008,3 +1011,4 @@ class DeterministicBehaviour: public Behaviour {
 
 #pragma GCC diagnostic warning "-Wunused-parameter"
 #endif
+
