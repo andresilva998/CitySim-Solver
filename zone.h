@@ -99,6 +99,8 @@ protected:
     float Ci; //!< capacitance of the air node (J/K)
     float Lr = 0.f, Lc= 0.f; //!< radiative and convective internal heat gains (W)
 
+    float lightsPowerDensity = 24.f; //!< Installed lighting power density (W/m²)
+
     vector<double> heating,cooling; // energy for heating and cooling to get Tmin and Tmax (in Wh)
     vector<float> Qi; // internal gains (in Wh)
     vector<double> Qs; // sensible heat that needs to be given to the room (in Wh)
@@ -447,9 +449,10 @@ public:
         return illuminance;
     }
 
-    /// TODO: change the value here for reading in the XML
+    /// Lighting configuration (values can be overridden via XML)
     float getLightsThreshold() { return 300.f; /* in lux */ }
-    float getLightsPowerDensity() { return 24.f; /* in W/m² */ }
+    float getLightsPowerDensity() { return lightsPowerDensity; }
+    void setLightsPowerDensity(float value) { lightsPowerDensity = value; }
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
     virtual double getMatrixElement(unsigned int j, unsigned int k) { return 0.0; }
@@ -1099,5 +1102,6 @@ class ZoneN : public Zone {
 };
 
 #endif
+
 
 
