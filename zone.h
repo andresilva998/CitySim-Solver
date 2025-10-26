@@ -99,7 +99,7 @@ protected:
     float Ci; //!< capacitance of the air node (J/K)
     float Lr = 0.f, Lc= 0.f; //!< radiative and convective internal heat gains (W)
 
-    float lightsPowerDensity = 24.f; //!< Installed lighting power density (W/m²)
+    float lightsPowerDensity = 0.f; //!< Installed lighting power density (W/m²)
 
     vector<double> heating,cooling; // energy for heating and cooling to get Tmin and Tmax (in Wh)
     vector<float> Qi; // internal gains (in Wh)
@@ -1102,6 +1102,7 @@ class ZoneN : public Zone {
 };
 
 #endif
+
 
 
 
