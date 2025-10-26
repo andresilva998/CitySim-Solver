@@ -6,6 +6,7 @@
 #include "occupants.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -3431,29 +3432,30 @@ float Model::lightsElectricConsumption(Zone* pZone, float timeStepSeconds) {
 }
 
 // function to compute the saturation pressure of water in the air
-double Model::es(double ta) {␊
-        // Constants for the calculation
-        const std::array<double, 8> g = {
-                -2836.5744,
-                -6028.076559,
-		19.54263612,
-		-0.02737830188,
-		1.6261698e-5,
-		7.0229056e-10,
-		-1.8680009e-13,
-		2.7150305
-	};
+double Model::es(double ta)
+{
+    // Constants for the calculation (Stewart & Oke 1992, Table A4.1)
+    static const std::array<double, 8> g = {
+        -2836.5744,
+        -6028.076559,
+        19.54263612,
+        -0.02737830188,
+        1.6261698e-5,
+        7.0229056e-10,
+        -1.8680009e-13,
+        2.7150305
+    };
 
-	// Convert air temperature to Kelvin
-	double tk = ta + 273.15;
+    // Convert air temperature to Kelvin
+    double tk = ta + 273.15;
 
-	// Calculate saturation vapor pressure
-	double es = g[7] * std::log(tk);
-	for (int i = 0; i <= 6; ++i) {
-		es += g[i] * std::pow(tk, i - 2);
-	}
-        es = std::exp(es) * 0.01; // Convert Pa to hPa
-        return es;
+    // Calculate saturation vapor pressure
+    double es = g[7] * std::log(tk);
+    for (int i = 0; i <= 6; ++i) {
+        es += g[i] * std::pow(tk, static_cast<double>(i) - 2.0);
+    }
+    es = std::exp(es) * 0.01; // Convert Pa to hPa
+    return es;
 }
 
 namespace {
@@ -3876,6 +3878,7 @@ float Model::computeGroundUTCI(Ground* pGround, Climate* pClimate, unsigned int 
 
     return evaluateUTCI(Ta, va, Pa, D_Tmrt);
 }
+
 
 
 
