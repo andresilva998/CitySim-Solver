@@ -699,8 +699,8 @@ void Model::ThermalStepExplicitTemperature(Building *pBuilding, Climate* pClimat
 
             // the occupants presence -> heat released
             /// commented: if needed again, this must be uncommented and adapted
-            Lr = pBuilding->getZone(i)->getOccupantsSensibleHeatRadiative()  * pBuilding->getZone(i)->getOccupants()->getOccupantsFraction(day,hour,step2);
-            Lc = pBuilding->getZone(i)->getOccupantsSensibleHeatConvective() * pBuilding->getZone(i)->getOccupants()->getOccupantsFraction(day,hour,step2);
+            double Lr = pBuilding->getZone(i)->getOccupantsSensibleHeatRadiative()  * pBuilding->getZone(i)->getOccupants()->getOccupantsFraction(day,hour,step2);
+            double Lc = pBuilding->getZone(i)->getOccupantsSensibleHeatConvective() * pBuilding->getZone(i)->getOccupants()->getOccupantsFraction(day,hour,step2);
             pBuilding->getZone(i)->setRadiativeInternalHeatGains(Lr);
             pBuilding->getZone(i)->setConvectiveInternalHeatGains(Lc);
 
@@ -3826,6 +3826,7 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
 
 
