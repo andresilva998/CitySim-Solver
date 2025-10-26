@@ -5579,7 +5579,19 @@ void XmlScene::appendGroundUTCIToFile(const std::string &fileOut,
     if (!groundUTCIFileInitialised) {
         std::ofstream headerOut(fileOut.c_str(), std::ios::out | std::ios::trunc);
         if (!headerOut.is_open()) throw(string("Cannot open file: ") + fileOut);
-        headerOut << "#day\thour\tgroundId\tUTCI(celsius)" << std::endl;
+
+        headerOut << "#hour";
+        for (forward_list<Ground*>::iterator it = pDistrict->getGrounds()->begin();
+             it != pDistrict->getGrounds()->end(); ++it) {
+            Ground* ground = *it;
+            if (!ground) continue;
+
+            headerOut << "\t" << ground->getId();
+            if (!ground->getKey().empty()) {
+                headerOut << "(" << ground->getKey() << ")";
+            }
+        }
+        headerOut << std::endl;
         headerOut.close();
         groundUTCIFileInitialised = true;
     }
@@ -5587,23 +5599,22 @@ void XmlScene::appendGroundUTCIToFile(const std::string &fileOut,
     std::fstream textFile(fileOut.c_str(), std::ios::out | std::ios::app);
     if (!textFile.is_open()) throw(string("Cannot open file: ") + fileOut);
 
+    const unsigned int simulationHour = day * 24u + hour;
+    textFile << simulationHour;
+
     for (forward_list<Ground*>::iterator it = pDistrict->getGrounds()->begin();
          it != pDistrict->getGrounds()->end(); ++it) {
         Ground* ground = *it;
         if (!ground) continue;
 
+        textFile << "\t";
         const unsigned int entries = ground->getUTCIEntries();
-        if (entries == 0u) continue;
-
-        textFile << day << "\t"
-                 << hour << "\t"
-                 << ground->getId();
-        if (!ground->getKey().empty()) {
-            textFile << "(" << ground->getKey() << ")";
+          if (entries != 0u) {
+            textFile << ground->getUTCI(entries - 1u);
         }
-        textFile << "\t" << ground->getUTCI(entries - 1u) << "\n";
     }
 
+    textFile << "\n";
     textFile.close();
 }
 
