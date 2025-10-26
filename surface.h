@@ -884,6 +884,7 @@ private:
     float C1, G1, G2; // one node equivalent values
     float kFactor = 0.f, X=0.f, Y=0.f;
     vector<float> waterEvapotranspiration;
+    vector<float> utci; //!< Hourly UTCI values for this ground surface (in °C)
     bool detailedSimulation = false;
 
 public:
@@ -904,6 +905,7 @@ public:
         /// TODO: check this initial condition of 8∞C
         if (composite) layerTemperature.assign(composite->getnLayers(),8.f);
         if (composite) getComposite()->getSimplifiedNode(C1,G1,G2); ///TODO: check if no composite what happens
+        utci.clear();
     }
 
     SType getType(){return GROUND;}
@@ -933,6 +935,11 @@ public:
     float getWaterEvapotranspiration(size_t index) { return waterEvapotranspiration.at(index); }
     void setWaterEvapotranspiration(float value) { if (kFactor > 0.f) waterEvapotranspiration.push_back(value); }
     void eraseWaterEvapotranspiration(unsigned int keepValue) { if (!waterEvapotranspiration.empty()) waterEvapotranspiration.erase(waterEvapotranspiration.begin(),waterEvapotranspiration.end()-min(keepValue,(unsigned int)waterEvapotranspiration.size())); } // removes all elements but the last one
+
+    void setUTCI(float value) { utci.push_back(value); }
+    float getUTCI(size_t index) const { return utci.at(index); }
+    unsigned int getUTCIEntries() const { return static_cast<unsigned int>(utci.size()); }
+    void eraseUTCI(unsigned int keepValue) { if (!utci.empty()) utci.erase(utci.begin(), utci.end() - min(keepValue, static_cast<unsigned int>(utci.size()))); }
 
     // detailed simulation (multi-nodal)
     bool isDetailedSimulation() { return detailedSimulation; }
@@ -981,3 +988,4 @@ public:
 };
 
 #endif
+
