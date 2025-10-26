@@ -181,7 +181,7 @@ public :
     static void lightAction_Lightswitch2002(Zone* pZone, unsigned int day, unsigned int hour, unsigned int fracHour);
     static void lightAction_Threshold(Zone* pZone);
 
-    static float lightsElectricConsumption(Zone* pZone);
+    static float lightsElectricConsumption(Zone* pZone, float timeStepSeconds = static_cast<float>(dt));
 
     static double es(double ta);
     static void computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned int day, unsigned int hour);
@@ -189,3 +189,4 @@ public :
 };
 
 #endif
+
