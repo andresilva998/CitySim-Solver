@@ -185,8 +185,10 @@ public :
 
     static double es(double ta);
     static void computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned int day, unsigned int hour);
+    static float computeGroundUTCI(Ground* pGround, Climate* pClimate, unsigned int day, unsigned int hour);
 
 };
 
 #endif
+
 
