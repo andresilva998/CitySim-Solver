@@ -279,13 +279,14 @@ float Zone::getDHWConsumption(unsigned int day, unsigned int hour)
 
 void Zone::writeXML(ofstream& file, string tab=""){
 
-    file << tab << "<Zone id=\"" << id << "\" volume=\"" << Vi << "\" psi=\"" << Kpsi
-         << "\" Tmin=\"" << Tmin << "\" Tmax=\"" << Tmax << "\" groundFloor=\"";
+    file << tab << "<Zone id=\"" << id << "\" volume=\"" << Vi << "\" psi=\"" << Kpsi␊
+         << "\" Tmin=\"" << Tmin << "\" Tmax=\"" << Tmax << "\" groundFloor=\"";␊
 
     if (groundFloor)
         file << "true";
     else
         file << "false";
+    file << "\" lightingPowerDensity=\"" << getLightsPowerDensity();
     file << "\" nightVentilationBegin=\"" << nightVentilationBegin << "\" nightVentilationEnd=\"" << nightVentilationEnd;
     file << "\">" << endl;
     string subtab =tab+"\t";
@@ -646,3 +647,4 @@ void ZoneN::setTos(float Tout) {
         roofs[i]->setTemperature(roofTemperature);
     }
 }
+
