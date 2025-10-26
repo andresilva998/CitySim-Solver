@@ -399,7 +399,7 @@ public:
     void setOccupantsLatentHeat(float watts) { occupantsLatentHeat = watts; }
     float getOccupantsSensibleHeatConvective() { return occupantsCount*occupantsSensibleHeat*(1.f-occupantsSensibleHeatRadiantFraction); }
     float getOccupantsSensibleHeatRadiative()  { return occupantsCount*occupantsSensibleHeat*occupantsSensibleHeatRadiantFraction; }
-    float getOccupantsLatentHeat() { return occupantsLatentHeat; }
+    float getOccupantsLatentHeat() { return occupantsCount*occupantsLatentHeat; }
     void setActivityType(unsigned int value) { activityType = value; }
     unsigned int getActivityType() { return activityType; }
     //void setOccupantsYearProfileID(unsigned int id) { occupantsYearProfileID=id; }
@@ -1093,3 +1093,4 @@ class ZoneN : public Zone {
 };
 
 #endif
+
