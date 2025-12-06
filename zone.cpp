@@ -503,7 +503,7 @@ float Zone2N::computeBipvHeatingGain(Wall& wall, float Tout, float vwind) {
         double QirPv = hr_env * pvLongWaveArea * (envTempK - Tgo);
 
         double A11 = pow(Kw1, 2.0) * dt / (max(1e-6f, Cw) + dt * (k2 + Kw1)) - Kw1 - Ke * (1.0 - pvratio);
-        double B1 = Ke * (1.0 - pvratio) * ToutK + Qsun1 * (1.0 - pvratio) + QirWall␊
+        double B1 = Ke * (1.0 - pvratio) * ToutK + Qsun1 * (1.0 - pvratio) + QirWall
                     + Kw1 / (max(1e-6f, Cw)+dt * (k2 + Kw1)) * (TwK + dt * k2 * TaK + dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lr));
         double C1 = hos * Awall * pvratio * (Tair - Tos) + pvratio * Awall * sigma * (pv.epsilonbp * pow(Tbp, 4.0) - pv.epsilonos * pow(Tos, 4.0));
         F[0] = A11 * Tos + B1 + C1;
@@ -576,7 +576,7 @@ float Zone2N::computeBipvHeatingGain(Wall& wall, float Tout, float vwind) {
         double A1312 = heatingMode ? -e * w * rho_air_base * cp_air * TaK : 0.0;
         double B13 = ((-Ci / dt) - getUA() - k2 - (k2 * k2 * dt) / wallDenom)
                      * (TaK) + (Ci / dt) * (Ta.back() + 273.15)
-                     + (getUA() * ToutK + (k2 / std::max<double>(1e-6, Kw1)) * (Qsun2 * Ww + Lr) + Qsun2 * Wa + Lc)␊
+                     + (getUA() * ToutK + (k2 / std::max<double>(1e-6, Kw1)) * (Qsun2 * Ww + Lr) + Qsun2 * Wa + Lc)
                      - k2 * (Cw * TwK - dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lc)) / wallDenom;
         double C13 = heatingMode ? e * w * rho_air_base * cp_air * TairOut * Vair : 0.0;
         F[12] = A131 * Tos + A1312 * Vair + B13 + C13 + H;
@@ -936,4 +936,5 @@ void ZoneN::setTos(float Tout) {
 
 
 
-␊
+
+
