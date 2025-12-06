@@ -27,12 +27,12 @@ District::District(TiXmlHandle XMLHandler, XmlScene* pScene):pScene(pScene),occu
         }
         else logStream << "no profile given." << endl << flush;
 
-        // Composites loading in the District, they can be named: Composite, WallType and GroundType␊
-        logStream << "Loading composite(s):\n";␊
-        i=0;␊
-        while (XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()) {␊
-            composites.insert( pair<string,Composite*>(XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()->Attribute("id"), new Composite(XMLHandler.FirstChild("District").ChildElement("Composite",i),&logStream)));␊
-            ++i;␊
+        // Composites loading in the District, they can be named: Composite, WallType and GroundType
+        logStream << "Loading composite(s):\n";
+        i=0;
+        while (XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()) {
+            composites.insert( pair<string,Composite*>(XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()->Attribute("id"), new Composite(XMLHandler.FirstChild("District").ChildElement("Composite",i),&logStream)));
+            ++i;
         }
         i=0;
         while (XMLHandler.FirstChild("District").ChildElement("WallType",i).ToElement()) {
@@ -547,4 +547,5 @@ void District::readFarField(string fileName){
         input >> buffer; // next azimut, if not end of file
     }
 }
+
 
