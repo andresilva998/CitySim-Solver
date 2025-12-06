@@ -342,7 +342,7 @@ float Surface::computeGlazingGvalueHemispherical() {
 
 }
 
-Wall::Wall(TiXmlHandle hdl, Building* pBuilding, ostream* pLogStr):Surface(hdl, pBuilding, pLogStr) {␊
+Wall::Wall(TiXmlHandle hdl, Building* pBuilding, ostream* pLogStr):Surface(hdl, pBuilding, pLogStr) {
 
     // Get the composite
     if (hdl.ToElement()->Attribute("type")) {
@@ -457,4 +457,5 @@ Ground::Ground(TiXmlHandle hdl, Composite* c, ostream* pLogStream):Surface(hdl, 
     initialiseModel();
 
 }
+
 
