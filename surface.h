@@ -662,11 +662,11 @@ public:
     float getTotalInternalIlluminance1() { return illuminance1.back() + internallyReflectedIlluminance.back(); }
 
     // gets the PV production
-    float getPVElectricProduction(float Tout) {␊
-        pvProduction.push_back(0.f);␊
-        if (pvPanel != NULL) {␊
-            pvProduction.back() += pvRatio*area*shortWaveIrradiance_IAM*pvPanel->getMaxPowerEfficiency(shortWaveIrradiance_IAM, Tout);␊
-        }␊
+    float getPVElectricProduction(float Tout) {
+        pvProduction.push_back(0.f);
+        if (pvPanel != NULL) {
+            pvProduction.back() += pvRatio*area*shortWaveIrradiance_IAM*pvPanel->getMaxPowerEfficiency(shortWaveIrradiance_IAM, Tout);
+        }
         if (pvtPanel != NULL) {
             pvProduction.back() += pvtRatio*area*shortWaveIrradiance_IAM*pvtPanel->getMaxPowerEfficiency(shortWaveIrradiance_IAM, Tout);
         }
@@ -782,7 +782,7 @@ public:
         composite = c;
     }
     Wall(const Surface& s):Surface(s) { computeNormalAndArea(); } // Incomplete constructor for DXF reading, do not use without completing the geometry...
-    Wall(int id, GENPoint p1, GENPoint p2, float elevation):Surface(id){␊
+    Wall(int id, GENPoint p1, GENPoint p2, float elevation):Surface(id){
         // for wall to be oriented outside, floor vertices (positive orientation) must be taken backwards
         vertices.push_back(p2);
         vertices.push_back(p1);
@@ -1066,4 +1066,5 @@ public:
 };
 
 #endif
+
 
