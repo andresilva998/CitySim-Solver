@@ -98,6 +98,7 @@ protected:
     float rhoi; //!< Internal air density (kg/m³)
     float Ci; //!< capacitance of the air node (J/K)
     float Lr = 0.f, Lc= 0.f; //!< radiative and convective internal heat gains (W)
+    float bipvHeatingGain = 0.f;
 
     vector<double> heating,cooling; // energy for heating and cooling to get Tmin and Tmax (in Wh)
     vector<float> Qi; // internal gains (in Wh)
@@ -272,6 +273,9 @@ public:
     double getTa(unsigned int it) { return Ta.at(it); }
     double getTa(unsigned int day, unsigned int hour);
     double getTa() { if (Ta.empty()) return 15.0; else return Ta.back(); }
+    void resetBipvHeatingGain() { bipvHeatingGain = 0.f; }
+    void addBipvHeatingGain(float gain) { bipvHeatingGain += gain; }
+    float getBipvHeatingGain() const { return bipvHeatingGain; }
     void setTa(double value) { Ta.push_back(value); }
     void setTa(double value, unsigned int step) { Ta[step] = value; }
     virtual void eraseT(unsigned int keepValue) { Ta.erase(Ta.begin(),Ta.end()-min(keepValue,(unsigned int)Ta.size())); }
@@ -463,6 +467,7 @@ public:
     // sets a new value to the temperature vector of node i
     virtual void setT(unsigned int i, double value) { throw(string("The node type was not defined.")); }
     virtual void setTExpl(unsigned int i, double value) { throw(string("The node type was not defined.")); }
+    virtual float computeBipvHeatingGain(Wall& wall, float Tout, float vwind) { (void)wall; (void)Tout; (void)vwind; return 0.f; }
 #pragma GCC diagnostic warning "-Wunused-parameter"
 
     // sets the foreseen air temperature
@@ -499,7 +504,7 @@ class Zone2N : public Zone {
  protected:
 
     float hc_int=3.f;
-    float Cw, Kw1, Kw2;
+    float Cw, Kw1, Kw2;␊
     float Tw=15.f, TwExpl=15.f;
 
  public:
@@ -511,6 +516,8 @@ class Zone2N : public Zone {
         Zone::clear();
     }
     virtual void update(bool constructor=false);
+
+    float computeBipvHeatingGain(Wall& wall, float Tout, float vwind) override;
 
     double getKappa1();
     double getKappa2() { return Kw2*Swa*hc_int/(Kw2+hc_int); } // if no walls, Swa=0 leading to a decoupling from the air node
@@ -558,6 +565,7 @@ class Zone2N : public Zone {
         // wall temperature node
         else if (i == 1) {  double term2 = Kw2*(getWw()*getQsun2()+Lr)/(Kw2+hc_int);
                             for (size_t i=0; i<walls.size(); ++i) {
+                                if (walls[i]->hasBipvModel()) continue;
                                 term2 += Kw1*walls[i]->getWallArea()
                                          *(+walls[i]->get_hc()*Tout
                                            +walls[i]->getShortWaveIrradiance()*(1.-walls[i]->getShortWaveReflectance_opaque())
@@ -591,19 +599,19 @@ class Zone2N : public Zone {
     // returns the outside surface temperature
     void setTos(float Tout);
 
-    void eraseTos_back() {
-        for (size_t i=0; i<walls.size(); ++i) walls[i]->eraseTemperature_back();
-        for (size_t i=0; i<roofs.size(); ++i) roofs[i]->eraseTemperature_back();
-    }
-
-};
+    void eraseTos_back() {␊
+        for (size_t i=0; i<walls.size(); ++i) walls[i]->eraseTemperature_back();␊
+        for (size_t i=0; i<roofs.size(); ++i) roofs[i]->eraseTemperature_back();␊
+    }␊
+␊
+};␊
 
 class Zone3N : public Zone2N {
 
  protected:
 
     float Cr, Kr1, Kr2;
-    float Tr=15.f, TrExpl=15.f;
+    float Tr=15.f, TrExpl=15.f;␊
 
  public:
 
@@ -668,10 +676,10 @@ class Zone3N : public Zone2N {
                                      /(hc_int+Kw2)
                                    + getWa()*getQsun2()+Lc+Qs;
         // wall temperature node
-        else if (i == 1)    return Zone2N::getSourceTerm(i,Tout,Tground,Qs);
-        // roof temperature node
-        else if (i == 2) {  double term3 = 0.;
-                            for (size_t i=0; i<roofs.size(); ++i) {
+        else if (i == 1)    return Zone2N::getSourceTerm(i,Tout,Tground,Qs);␊
+        // roof temperature node␊
+        else if (i == 2) {  double term3 = 0.;␊
+                            for (size_t i=0; i<roofs.size(); ++i) {␊
                                 term3 += Kr1*roofs[i]->getRoofArea()
                                          *(+roofs[i]->get_hc()*Tout
                                            +roofs[i]->getShortWaveIrradiance()*(1.-roofs[i]->getShortWaveReflectance_opaque())
@@ -783,6 +791,7 @@ class Zone3N_floor : public Zone2N {
         // wall temperature node
         else if (i == 1) {  double term2 = Kw2*(Lr)/(Kw2+hc_int);
                             for (size_t i=0; i<walls.size(); ++i) {
+                                if (walls[i]->hasBipvModel()) continue;
                                 term2 += Kw1*walls[i]->getWallArea()
                                          *(+walls[i]->get_hc()*Tout
                                            +walls[i]->getShortWaveIrradiance()*(1.-walls[i]->getShortWaveReflectance_opaque())
@@ -892,6 +901,7 @@ class Zone4N : public Zone3N {
         // wall temperature node
         else if (i == 1) {  double term2 = Kw2*(Lr)/(Kw2+hc_int);
                             for (size_t i=0; i<walls.size(); ++i) {
+                                if (walls[i]->hasBipvModel()) continue;
                                 term2 += Kw1*walls[i]->getWallArea()
                                          *(+walls[i]->get_hc()*Tout
                                            +walls[i]->getShortWaveIrradiance()*(1.-walls[i]->getShortWaveReflectance_opaque())
@@ -1093,3 +1103,4 @@ class ZoneN : public Zone {
 };
 
 #endif
+
