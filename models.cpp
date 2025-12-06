@@ -1,5 +1,7 @@
 #include "models.h"
 
+#include <cmath>
+
 #include "climate.h"
 #include "scene.h"
 #include "building.h"
@@ -108,6 +110,23 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
         // *** blinds procedure for the walls - deterministic fashion *** //
         if (!Model::thermalExplicit) pBuilding->deterministicShadingAction(/*day*/);
 
+        // reset and compute BIPV/T heat gains
+        pBuilding->getZone(i)->resetBipvHeatingGain();
+        for (size_t w = 0; w < pBuilding->getZone(i)->getnWalls(); ++w) {
+            Wall* wall = pBuilding->getZone(i)->getWall(w);
+            if (wall->hasBipvModel()) {
+                const float windSpeed = pClimate->getWindSpeed(day,hour);
+                const float windDir = pClimate->getWindDirection(day,hour);
+                const float wallAzimuth = wall->getAzimuth();
+                float dr = fabs(wallAzimuth - windDir);
+                if (dr > 180.f) dr = 360.f - dr;
+                const float vwindNormal = windSpeed * fabs(cos(dr * static_cast<float>(M_PI / 180.0)));
+
+                float gain = wall->computeBipvHeatingGain(*pBuilding->getZone(i), Tout, vwindNormal);
+                pBuilding->getZone(i)->addBipvHeatingGain(gain);
+            }
+        }
+		
         // saving the internal gains in a vector (except the Qs)
         pBuilding->getZone(i)->setQi(pBuilding->getZone(i)->getQsun2() + pBuilding->getZone(i)->getConvectiveInternalHeatGains() + pBuilding->getZone(i)->getRadiativeInternalHeatGains());
 
@@ -155,8 +174,8 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
 
         // source term b
         for (unsigned int j=0;j<pBuilding->getZone(i)->getnNodes();++j) {
-             b[Thermal_getMatrixPosition(pBuilding,i)+j] = pBuilding->getZone(i)->getSourceTerm(j,Tout,Tground);
-        }
+            b[Thermal_getMatrixPosition(pBuilding,i)+j] = pBuilding->getZone(i)->getSourceTerm(j,Tout,Tground,pBuilding->getZone(i)->getBipvHeatingGain());
+        }␊
 
         //cerr << "After definition of the source term b." << endl;
 
@@ -3806,3 +3825,4 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
