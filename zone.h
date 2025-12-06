@@ -240,8 +240,8 @@ public:
     float getKi() { return Ki; }
     void setKi(double convectiveKi) { Ki = convectiveKi; }
 
-    float getWw() { return Ww; }␊
-    float getWa() { return Wa; }␊
+    float getWw() { return Ww; }
+    float getWa() { return Wa; }
 
     float getNinf() { return Ninf; }
     void setNinf(float Ninf) { this->Ninf = Ninf; }
@@ -1106,5 +1106,6 @@ class ZoneN : public Zone {
 };
 
 #endif
+
 
 
