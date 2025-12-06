@@ -404,6 +404,7 @@ float Zone2N::computeBipvHeatingGain(Wall& wall, float Tout, float vwind) {
 
     // convert temperatures to Kelvin for nonlinear terms
     const double TaK = getTa() + 273.15;
+    const double TwK = Tw + 273.15;
     const double ToutK = Tout + 273.15;
 
     const double Awall = max(1e-6, static_cast<double>(wall.getWallArea()));
@@ -500,7 +501,7 @@ float Zone2N::computeBipvHeatingGain(Wall& wall, float Tout, float vwind) {
 
         double A11 = pow(Kw1, 2.0) * dt / (max(1e-6f, Cw) + dt * (k2 + Kw1)) - Kw1 - Ke * (1.0 - pvratio);
         double B1 = Ke * (1.0 - pvratio) * ToutK + Qsun1 * (1.0 - pvratio) + QirWall
-                    + Kw1 / (max(1e-6f, Cw)+dt * (k2 + Kw1)) * ((Tw + 273.15) + dt * k2 * TaK + dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lr));
+                    + Kw1 / (max(1e-6f, Cw)+dt * (k2 + Kw1)) * (TwK + dt * k2 * TaK + dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lr));
         double C1 = hos * Awall * pvratio * (Tair - Tos) + pvratio * Awall * sigma * (pv.epsilonbp * pow(Tbp, 4.0) - pv.epsilonos * pow(Tos, 4.0));
         F[0] = A11 * Tos + B1 + C1;
 
@@ -539,8 +540,8 @@ float Zone2N::computeBipvHeatingGain(Wall& wall, float Tout, float vwind) {
         double A712 = (getTa() <= Tout) ? 0.0 : -0.85 * 1.33;
         double B6 = (getTa() <= Tout) ? 0.0 : -0.85 * 1.959;
         double B7 = B6;
-        double C6 = (getTa() <= Tout) ? - hos_nat : -0.85 * 1.517 * pow(fabs(Tos-Tair), 1/3);
-        double C7 = (getTa() <= Tout) ? - hbp_nat : -0.85 * 1.517 * pow(fabs(Tbp-Tair), 1/3);
+        double C6 = (getTa() <= Tout) ? - hos_nat : -0.85 * 1.517 * pow(fabs(Tos-Tair), 1.0 / 3.0);
+        double C7 = (getTa() <= Tout) ? - hbp_nat : -0.85 * 1.517 * pow(fabs(Tbp-Tair), 1.0 / 3.0);
         F[5] = hos + A612 * Vair + B6 + C6;
         F[6] = hbp + A712 * Vair + B7 + C7;
 
@@ -573,7 +574,7 @@ float Zone2N::computeBipvHeatingGain(Wall& wall, float Tout, float vwind) {
         double B13 = ((-Ci / dt) - getUA() - k2 - (k2 * k2 * dt) / wallDenom)
                      * (TaK) + (Ci / dt) * (Ta.back() + 273.15)
                      + (getUA() * ToutK + (k2 / std::max<double>(1e-6, Kw1)) * (Qsun2 * Ww + Lr) + Qsun2 * Wa + Lc)
-                     - k2 * (Cw * (Tw + 273.15) - dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lc)) / wallDenom;
+                     - k2 * (Cw * TwK - dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lc)) / wallDenom;
         double C13 = heatingMode ? e * w * rho_air_base * cp_air * TairOut * Vair : 0.0;
         F[12] = A131 * Tos + A1312 * Vair + B13 + C13 + H;
     };
@@ -929,4 +930,5 @@ void ZoneN::setTos(float Tout) {
         roofs[i]->setTemperature(roofTemperature);
     }
 }
+
 
