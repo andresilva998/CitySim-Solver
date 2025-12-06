@@ -27,12 +27,12 @@ District::District(TiXmlHandle XMLHandler, XmlScene* pScene):pScene(pScene),occu
         }
         else logStream << "no profile given." << endl << flush;
 
-        // Composites loading in the District, they can be named: Composite, WallType and GroundType
-        logStream << "Loading composite(s):\n";
-        i=0;
-        while (XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()) {
-            composites.insert( pair<string,Composite*>(XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()->Attribute("id"), new Composite(XMLHandler.FirstChild("District").ChildElement("Composite",i),&logStream)));
-            ++i;
+        // Composites loading in the District, they can be named: Composite, WallType and GroundType␊
+        logStream << "Loading composite(s):\n";␊
+        i=0;␊
+        while (XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()) {␊
+            composites.insert( pair<string,Composite*>(XMLHandler.FirstChild("District").ChildElement("Composite",i).ToElement()->Attribute("id"), new Composite(XMLHandler.FirstChild("District").ChildElement("Composite",i),&logStream)));␊
+            ++i;␊
         }
         i=0;
         while (XMLHandler.FirstChild("District").ChildElement("WallType",i).ToElement()) {
@@ -47,6 +47,39 @@ District::District(TiXmlHandle XMLHandler, XmlScene* pScene):pScene(pScene),occu
             ++i;
         }
         logStream << composites.size() << " loaded." << endl << flush;
+
+        // Load WALLPV definitions (BIPV/T)
+        logStream << "Loading WALLPV definitions." << endl << flush;
+        i = 0;
+        while (XMLHandler.FirstChild("District").ChildElement("WALLPV", i).ToElement()) {
+            TiXmlElement* elemPV = XMLHandler.FirstChild("District").ChildElement("WALLPV", i).ToElement();
+            if (!elemPV->Attribute("name")) {
+                throw(string("Error in XML file: WALLPV entry without name attribute."));
+            }
+            WallPVDefinition def;
+            if (elemPV->Attribute("kbp")) def.kbp = to<float>(elemPV->Attribute("kbp"));
+            if (elemPV->Attribute("ebp")) def.ebp = to<float>(elemPV->Attribute("ebp"));
+            if (elemPV->Attribute("alfacsw")) def.alfacsw = to<float>(elemPV->Attribute("alfacsw"));
+            if (elemPV->Attribute("taugsw")) def.taugsw = to<float>(elemPV->Attribute("taugsw"));
+            if (elemPV->Attribute("alfacir")) def.alfacir = to<float>(elemPV->Attribute("alfacir"));
+            if (elemPV->Attribute("taugir")) def.taugir = to<float>(elemPV->Attribute("taugir"));
+            if (elemPV->Attribute("nuetamp")) def.nuetamp = to<float>(elemPV->Attribute("nuetamp"));
+            if (elemPV->Attribute("keva")) def.keva = to<float>(elemPV->Attribute("keva"));
+            if (elemPV->Attribute("eeva")) def.eeva = to<float>(elemPV->Attribute("eeva"));
+            if (elemPV->Attribute("kairg")) def.kairg = to<float>(elemPV->Attribute("kairg"));
+            if (elemPV->Attribute("eairg")) def.eairg = to<float>(elemPV->Attribute("eairg"));
+            if (elemPV->Attribute("etaeleref")) def.etaeleref = to<float>(elemPV->Attribute("etaeleref"));
+            if (elemPV->Attribute("Tcellref")) def.Tcellref = to<float>(elemPV->Attribute("Tcellref"));
+            if (elemPV->Attribute("algagsw")) def.algagsw = to<float>(elemPV->Attribute("algagsw"));
+            if (elemPV->Attribute("algagir")) def.algagir = to<float>(elemPV->Attribute("algagir"));
+            if (elemPV->Attribute("eair")) def.eair = to<float>(elemPV->Attribute("eair"));
+            if (elemPV->Attribute("epsilonbp")) def.epsilonbp = to<float>(elemPV->Attribute("epsilonbp"));
+            if (elemPV->Attribute("epsilonos")) def.epsilonos = to<float>(elemPV->Attribute("epsilonos"));
+            if (elemPV->Attribute("epsilongo")) def.epsilongo = to<float>(elemPV->Attribute("epsilongo"));
+            if (elemPV->Attribute("epsilongi")) def.epsilongi = to<float>(elemPV->Attribute("epsilongi"));
+            wallPVDefinitions[elemPV->Attribute("name")] = def;
+            ++i;
+        }
 
         // Occupancy profiles loading in the District
         occupancyProfiles.clearIdMap();
@@ -514,3 +547,4 @@ void District::readFarField(string fileName){
         input >> buffer; // next azimut, if not end of file
     }
 }
+
