@@ -4,6 +4,29 @@
 #include <map>
 #include <forward_list>
 
+struct WallPVDefinition {
+    float kbp = 0.f;
+    float ebp = 0.f;
+    float alfacsw = 0.f;
+    float taugsw = 0.f;
+    float alfacir = 0.f;
+    float taugir = 0.f;
+    float nuetamp = 0.f;
+    float keva = 0.f;
+    float eeva = 0.f;
+    float kairg = 0.f;
+    float eairg = 0.f;
+    float etaeleref = 0.f;
+    float Tcellref = 0.f;
+    float algagsw = 0.f;
+    float algagir = 0.f;
+    float eair = 0.f;
+    float epsilonbp = 0.f;
+    float epsilonos = 0.f;
+    float epsilongo = 0.f;
+    float epsilongi = 0.f;
+};
+
 #include "building.h"
 #include "surface.h"
 
@@ -39,6 +62,7 @@ private:
     TemperatureProfiles* temperatureProfiles = nullptr;
     vector<DeviceType*> deviceTypes;
     vector<ActivityType*> activityTypes;
+    map<string, WallPVDefinition> wallPVDefinitions;
 
     vector<DistrictEnergyCenter*> districtEnergyCenters;
 
@@ -76,6 +100,11 @@ public:
 
     OccupancyProfiles* getOccupancyProfiles() { return &occupancyProfiles; }
     DHWProfiles* getDHWProfiles() { return &dhwProfiles; }
+    const WallPVDefinition* getWallPVDefinition(const string& id) const {
+        map<string, WallPVDefinition>::const_iterator it = wallPVDefinitions.find(id);
+        if (it == wallPVDefinitions.end()) return NULL;
+        return &(it->second);
+    }
     size_t getnActivityTypes() { return activityTypes.size(); }
     ActivityType* getActivityType(unsigned int id) { for (size_t i=0; i<activityTypes.size();++i) { if (activityTypes.at(i)->getId()==id) return activityTypes.at(i); } throw(string("ActivityType id not found.")); }
     size_t getnDeviceTypes() { return deviceTypes.size(); }
@@ -145,3 +174,4 @@ public:
 };
 
 #endif
+
