@@ -3,6 +3,7 @@
 #include "district.h"
 #include "scene.h"
 #include "GEOMBoundingSphereCalc.h"
+#include <algorithm>
 
 Material::Material(TiXmlHandle hdl, ostream* pLogStr):logStream(std::cout.rdbuf()) {
 
@@ -341,7 +342,7 @@ float Surface::computeGlazingGvalueHemispherical() {
 
 }
 
-Wall::Wall(TiXmlHandle hdl, Building* pBuilding, ostream* pLogStr):Surface(hdl, pBuilding, pLogStr) {
+Wall::Wall(TiXmlHandle hdl, Building* pBuilding, ostream* pLogStr):Surface(hdl, pBuilding, pLogStr) {␊
 
     // Get the composite
     if (hdl.ToElement()->Attribute("type")) {
@@ -357,6 +358,21 @@ Wall::Wall(TiXmlHandle hdl, Building* pBuilding, ostream* pLogStr):Surface(hdl, 
     // specific for the Wall
     if (hdl.ToElement()->Attribute("ep_id")) ep_id = hdl.ToElement()->Attribute("ep_id"); // add the ep_id
     else ep_id = "Wall" + toString(id);
+
+    // activate BIPV/T model when required
+    if (hdl.ToElement()->Attribute("WALLPVTYPE")) {
+        const WallPVDefinition* def = b->getDistrict()->getWallPVDefinition(hdl.ToElement()->Attribute("WALLPVTYPE"));
+            if (def) {
+                wallPVDefinition = def;
+                bipvEnabled = true;
+                float minZ = vertices.front()[2];
+                for (size_t i = 1; i < vertices.size(); ++i) {
+                    minZ = min(minZ, vertices[i][2]);
+                }
+                bipvHeight = max(1e-3f, minZ); // L: mínimo em z da superfície
+                bipvWidth = getPVRatio()*getWallArea()/bipvHeight; // w = pvratio * Awall / L
+            }
+        }
 }
 
 Floor::Floor(TiXmlHandle hdl, Building* pBuilding, ostream* pLogStr):Surface(hdl, pBuilding, pLogStr) {
@@ -419,6 +435,10 @@ Roof::~Roof() {
     //cout << "done."<< endl;
 }
 
+float Wall::computeBipvHeatingGain(Zone& zone, float Tout, float vwind) {
+    return zone.computeBipvHeatingGain(*this, Tout, vwind);
+}
+
 Ground::Ground(TiXmlHandle hdl, Composite* c, ostream* pLogStream):Surface(hdl, NULL, pLogStream) {
 
     // sets the composite
@@ -437,3 +457,4 @@ Ground::Ground(TiXmlHandle hdl, Composite* c, ostream* pLogStream):Surface(hdl, 
     initialiseModel();
 
 }
+
