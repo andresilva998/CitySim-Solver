@@ -173,8 +173,8 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
 //        cerr << "Kappa1: " << pBuilding->getZone(i)->getKappa1() << "\tKappa2: " << pBuilding->getZone(i)->getKappa2() << endl;
 
         // source term b␊
-        for (unsigned int j=0;j<pBuilding->getZone(i)->getnNodes();++j) {␊
-            b[Thermal_getMatrixPosition(pBuilding,i)+j] = pBuilding->getZone(i)->getSourceTerm(j,Tout,Tground,pBuilding->getZone(i)->getBipvHeatingGain());␊
+        for (unsigned int j=0;j<pBuilding->getZone(i)->getnNodes();++j) {
+            b[Thermal_getMatrixPosition(pBuilding,i)+j] = pBuilding->getZone(i)->getSourceTerm(j,Tout,Tground,pBuilding->getZone(i)->getBipvHeatingGain());
         }
 
         //cerr << "After definition of the source term b." << endl;
@@ -3825,4 +3825,5 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 }
 
 
-␊
+
+
