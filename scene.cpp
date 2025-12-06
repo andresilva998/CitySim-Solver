@@ -3204,21 +3204,43 @@ void XmlScene::computeLongWave(unsigned int day, unsigned int hour) {
             if (factors->obstructed > 0.f) {
 
                 //logStream << "MainObstructing: " << factors->mainobstructing << " has a temperature defined." << endl << flush;
-                float Tmainobstructing = ((Surface*)(scene.GetSurface(factors->mainobstructing).SurfaceDelegate()))->getTemperature() + 273.15f;
-                float emissivity_mainobstructing = ((Surface*)(scene.GetSurface(factors->mainobstructing).SurfaceDelegate()))->getLongWaveEmissivity();
+                Surface* obstructing = (Surface*)(scene.GetSurface(factors->mainobstructing).SurfaceDelegate());
+                float Tmainobstructing = obstructing->getTemperature() + 273.15f;
+                float emissivity_mainobstructing = obstructing->getLongWaveEmissivity();
 
-                if (!isnan(Tmainobstructing)) {
-                    //cout << "Tmainobstructing=" << Tmainobstructing << endl;
-                    // check physical limits
-                    if (Tmainobstructing > 500.f) throw string("Main obstructing surface id(key): " + toString(((Surface*)(scene.GetSurface(factors->mainobstructing).SurfaceDelegate()))->getId())
-                                                               + "(" + toString(((Surface*)(scene.GetSurface(factors->mainobstructing).SurfaceDelegate()))->getKey()) + ")"
-                                                               +", Temperature: " + toString(Tmainobstructing));
-                    // compute the average temperature^4
-                    Tenv4 += factors->obstructed*emissivity_mainobstructing*pow(Tmainobstructing,4);
+                bool usedBipvEmission = false;
+                if (obstructing->hasBipvModel() && obstructing->hasBipvExteriorTemperatures()) {
+                    const WallPVDefinition* pv = obstructing->getWallPVDefinition();
+                    const double TosK = obstructing->getBipvTosK();
+                    const double TgoK = obstructing->getBipvTgoK();
+                    if (std::isfinite(TosK) && std::isfinite(TgoK)) {
+                        if (TosK > 500.0 || TgoK > 500.0) {
+                            throw string("Main obstructing surface id(key): " + toString(obstructing->getId())
+                                         + "(" + toString(obstructing->getKey()) + ")"
+                                         +", Temperature: " + toString(static_cast<float>(std::max(TosK, TgoK))));
+                        }
+                        const double pvratio = obstructing->getPVRatio();
+                        const double weightedEmission = (1.0 - pvratio) * pv->epsilonos * pow(TosK, 4.0)
+                                                        + pvratio * pv->epsilongo * pow(TgoK, 4.0);
+                        Tenv4 += factors->obstructed * weightedEmission;
+                        usedBipvEmission = true;
+                    }
                 }
-                else {/* we make the assumption that the obtructing surface is another building whose temperature is unknown
-                         and supposed to be the same as the one from this surfaceIndex
-                         -> we don't take any temperature and don't take into account that factors->obstructed */
+
+                if (!usedBipvEmission) {
+                    if (!isnan(Tmainobstructing)) {
+                        //cout << "Tmainobstructing=" << Tmainobstructing << endl;
+                        // check physical limits
+                        if (Tmainobstructing > 500.f) throw string("Main obstructing surface id(key): " + toString(obstructing->getId())
+                                                                   + "(" + toString(obstructing->getKey()) + ")"
+                                                                   +", Temperature: " + toString(Tmainobstructing));
+                        // compute the average temperature^4
+                        Tenv4 += factors->obstructed*emissivity_mainobstructing*pow(Tmainobstructing,4);
+                    }
+                    else {/* we make the assumption that the obtructing surface is another building whose temperature is unknown
+                             and supposed to be the same as the one from this surfaceIndex
+                             -> we don't take any temperature and don't take into account that factors->obstructed */
+                    }
                 }
             }
         }
@@ -3977,6 +3999,8 @@ void XmlScene::eraseResults(unsigned int keepValue, bool eraseAllResults) {
                 pDistrict->getBuilding(j)->getZone(zone)->getWall(k)->eraseInternallyReflectedIlluminance(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getWall(k)->eraseTemperature(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getWall(k)->erase_hc(keepValue);
+                pDistrict->getBuilding(j)->getZone(zone)->getWall(k)->eraseBipvElectricProduction(keepValue);
+                pDistrict->getBuilding(j)->getZone(zone)->getWall(k)->eraseBipvState(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getWall(k)->erasePVElectricProduction(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getWall(k)->eraseSolarThermalProduction(keepValue);
             }
@@ -3987,6 +4011,8 @@ void XmlScene::eraseResults(unsigned int keepValue, bool eraseAllResults) {
                 pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->eraseEnvironmentalTemperature(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->eraseTemperature(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->erase_hc(keepValue);
+                pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->eraseBipvElectricProduction(keepValue);
+                pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->eraseBipvState(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->eraseWaterEvapotranspiration(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->erasePVElectricProduction(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getRoof(k)->eraseSolarThermalProduction(keepValue);
@@ -3997,6 +4023,8 @@ void XmlScene::eraseResults(unsigned int keepValue, bool eraseAllResults) {
                 pDistrict->getBuilding(j)->getZone(zone)->getSurface(k)->eraseIlluminance(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getSurface(k)->eraseEnvironmentalTemperature(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getSurface(k)->eraseTemperature(keepValue);
+                pDistrict->getBuilding(j)->getZone(zone)->getSurface(k)->eraseBipvElectricProduction(keepValue);
+                pDistrict->getBuilding(j)->getZone(zone)->getSurface(k)->eraseBipvState(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getSurface(k)->erasePVElectricProduction(keepValue);
                 pDistrict->getBuilding(j)->getZone(zone)->getSurface(k)->eraseSolarThermalProduction(keepValue);
             }
@@ -4543,6 +4571,19 @@ void XmlScene::writeTHHeaderText(string fileOut) {
                  << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):ElectricConsumption(kWh)" << "\t"
                  << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):SolarPVProduction(Wh)" << "\t"
                  << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):SolarThermalProduction(Wh)" << "\t";
+      
+        for (unsigned int zone=0; zone<pDistrict->getBuilding(j)->getnZones();++zone) {
+            for (unsigned int k=0; k<pDistrict->getBuilding(j)->getZone(zone)->getnWalls(); ++k) {
+                Wall* wall = pDistrict->getBuilding(j)->getZone(zone)->getWall(k);
+                if (!wall->hasBipvModel()) continue;
+                textFile << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):" << wall->getId() << "(" << wall->getKey() << "):BIPVTcell(°C)" << "\t";
+                textFile << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):" << wall->getId() << "(" << wall->getKey() << "):BIPVTbp(°C)" << "\t";
+                textFile << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):" << wall->getId() << "(" << wall->getKey() << "):BIPVTos(°C)" << "\t";
+                textFile << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):" << wall->getId() << "(" << wall->getKey() << "):BIPVTgo(°C)" << "\t";
+                textFile << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):" << wall->getId() << "(" << wall->getKey() << "):BIPVElectricPower(W)" << "\t";
+                textFile << pDistrict->getBuilding(j)->getId() << "(" << pDistrict->getBuilding(j)->getKey() << "):" << wall->getId() << "(" << wall->getKey() << "):BIPVElectricEfficiency(-)" << "\t";
+            }
+        }
     }
     textFile << endl;
     textFile.close();
@@ -4608,6 +4649,19 @@ void XmlScene::writeTHResultsText(string fileOut) {
                      << fixed << setprecision(3) << pDistrict->getBuilding(j)->getElectricConsumption(i-preTimeStepsSimulated+simulationIndex)/3.6e6 << "\t"
                      << fixed << setprecision(0) << pDistrict->getBuilding(j)->getSolarPVProduction(i-preTimeStepsSimulated+simulationIndex)/3.6e3 << "\t"
                      << fixed << setprecision(0) << pDistrict->getBuilding(j)->getSolarThermalProduction(i-preTimeStepsSimulated+simulationIndex)/3.6e3 << "\t";
+
+                      for (unsigned int zone=0; zone<pDistrict->getBuilding(j)->getnZones();++zone) {
+                for (unsigned int k=0; k<pDistrict->getBuilding(j)->getZone(zone)->getnWalls(); ++k) {
+                    Wall* wall = pDistrict->getBuilding(j)->getZone(zone)->getWall(k);
+                    if (!wall->hasBipvModel()) continue;
+                    textFile << fixed << setprecision(1) << wall->getBipvTcell(i) << "\t";
+                    textFile << fixed << setprecision(1) << wall->getBipvTbp(i) << "\t";
+                    textFile << fixed << setprecision(1) << wall->getBipvTos(i) << "\t";
+                    textFile << fixed << setprecision(1) << wall->getBipvTgo(i) << "\t";
+                    textFile << fixed << setprecision(1) << wall->getBipvElectricProduction(i) << "\t";
+                    textFile << fixed << setprecision(3) << wall->getBipvElectricEfficiency(i) << "\t";
+                }
+            }
 
         }
         textFile << endl;
