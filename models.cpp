@@ -172,10 +172,10 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
      // show Kappa1 et Kappa2
 //        cerr << "Kappa1: " << pBuilding->getZone(i)->getKappa1() << "\tKappa2: " << pBuilding->getZone(i)->getKappa2() << endl;
 
-        // source term b
-        for (unsigned int j=0;j<pBuilding->getZone(i)->getnNodes();++j) {
-            b[Thermal_getMatrixPosition(pBuilding,i)+j] = pBuilding->getZone(i)->getSourceTerm(j,Tout,Tground,pBuilding->getZone(i)->getBipvHeatingGain());
-        }␊
+        // source term b␊
+        for (unsigned int j=0;j<pBuilding->getZone(i)->getnNodes();++j) {␊
+            b[Thermal_getMatrixPosition(pBuilding,i)+j] = pBuilding->getZone(i)->getSourceTerm(j,Tout,Tground,pBuilding->getZone(i)->getBipvHeatingGain());␊
+        }
 
         //cerr << "After definition of the source term b." << endl;
 
@@ -1880,7 +1880,6 @@ void Model::noHVAC_Control_Needs(Building* pBui, Climate* pClim, unsigned int da
             // Hot storage tank.
             double HS_T0 = pBui->getHeatStockTemperature();
             double HS_Tmin = pBui->getHeatStock()->getTmin();
-            double HS_Tmax = pBui->getHeatStock()->getTmax();
             double HS_Pup = computeSolarThermalPower(pBui, pClim, day, hour, HS_T0, true); // Solar thermal power available. Approximation, uses the initial temperature T0 during the whole time step.
 
             if ( ! pBui->getDHWHeatStock() ) { // But without DHW tank.
@@ -1893,7 +1892,6 @@ void Model::noHVAC_Control_Needs(Building* pBui, Climate* pClim, unsigned int da
                 // Domestic hot water tank.
                 double DHW_T0 = pBui->getDHWStockT();
                 double DHW_Tmin = pBui->getDHWHeatStock()->getTmin();
-                double DHW_Tmax = pBui->getDHWHeatStock()->getTmax();
                 double DHW_Tinlet = pBui->getDHWHeatStock()->getTinlet();
                 double DHW_Pup = computeSolarThermalPower(pBui, pClim, day, hour, DHW_T0, false); // Solar thermal power available. Approximation, uses the initial temperature T0 during the whole time step.
 
@@ -3825,4 +3823,5 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
