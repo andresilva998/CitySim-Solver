@@ -240,8 +240,8 @@ public:
     float getKi() { return Ki; }
     void setKi(double convectiveKi) { Ki = convectiveKi; }
 
-    float getWw() { return Ww; }
-    float getWa() { return Wa; }
+    float getWw() { return Ww; }␊
+    float getWa() { return Wa; }␊
 
     float getNinf() { return Ninf; }
     void setNinf(float Ninf) { this->Ninf = Ninf; }
@@ -504,7 +504,10 @@ class Zone2N : public Zone {
  protected:
 
     float hc_int=3.f;
-    float Cw, Kw1, Kw2;␊
+    float Cw, Kw1, Kw2;
+    // Wall node temperature carried between hourly steps (Celsius); seeded at 15°C until
+    // the solver writes the first simulated value. TwExpl mirrors it for the explicit
+    // (5-minute) scheme when enabled.
     float Tw=15.f, TwExpl=15.f;
 
  public:
@@ -599,19 +602,19 @@ class Zone2N : public Zone {
     // returns the outside surface temperature
     void setTos(float Tout);
 
-    void eraseTos_back() {␊
-        for (size_t i=0; i<walls.size(); ++i) walls[i]->eraseTemperature_back();␊
-        for (size_t i=0; i<roofs.size(); ++i) roofs[i]->eraseTemperature_back();␊
-    }␊
-␊
-};␊
+    void eraseTos_back() {
+        for (size_t i=0; i<walls.size(); ++i) walls[i]->eraseTemperature_back();
+        for (size_t i=0; i<roofs.size(); ++i) roofs[i]->eraseTemperature_back();
+    }
+
+};
 
 class Zone3N : public Zone2N {
 
  protected:
 
     float Cr, Kr1, Kr2;
-    float Tr=15.f, TrExpl=15.f;␊
+    float Tr=15.f, TrExpl=15.f;
 
  public:
 
@@ -676,10 +679,10 @@ class Zone3N : public Zone2N {
                                      /(hc_int+Kw2)
                                    + getWa()*getQsun2()+Lc+Qs;
         // wall temperature node
-        else if (i == 1)    return Zone2N::getSourceTerm(i,Tout,Tground,Qs);␊
-        // roof temperature node␊
-        else if (i == 2) {  double term3 = 0.;␊
-                            for (size_t i=0; i<roofs.size(); ++i) {␊
+        else if (i == 1)    return Zone2N::getSourceTerm(i,Tout,Tground,Qs);
+        // roof temperature node
+        else if (i == 2) {  double term3 = 0.;
+                            for (size_t i=0; i<roofs.size(); ++i) {
                                 term3 += Kr1*roofs[i]->getRoofArea()
                                          *(+roofs[i]->get_hc()*Tout
                                            +roofs[i]->getShortWaveIrradiance()*(1.-roofs[i]->getShortWaveReflectance_opaque())
@@ -1103,4 +1106,5 @@ class ZoneN : public Zone {
 };
 
 #endif
+
 
