@@ -1,6 +1,7 @@
 #ifndef SURFACE_H
 #define SURFACE_H
 
+#include <cmath>
 #include <limits>
 
 #include "tinyxml.h"
@@ -13,6 +14,8 @@
 
 class Building;
 class XmlScene;
+class Zone;
+struct WallPVDefinition;
 
 using namespace std;
 
@@ -289,8 +292,21 @@ protected:
     float pvtRatio = 0.f; //!< Proportion of the surface that is covered by Hybrid Solar panels \in[0,1]
     SolarHybrid *pvtPanel=nullptr;
 
+    const WallPVDefinition* wallPVDefinition = NULL;
+    bool bipvEnabled = false;
+    float bipvHeight = 0.f;
+    float bipvWidth = 0.f;
+    double bipvTosK = std::numeric_limits<double>::quiet_NaN();
+    double bipvTgoK = std::numeric_limits<double>::quiet_NaN();
+
     // values to save the pv and st production for this surface for each time step
     vector<float> pvProduction, stProduction;
+    vector<float> bipvElectricProduction;
+    vector<float> bipvTcellCelsius;
+    vector<float> bipvTbpCelsius;
+    vector<float> bipvTosCelsius;
+    vector<float> bipvTgoCelsius;
+    vector<float> bipvElectricEfficiency;
 
     // name for E+ simulation
     string ep_id; //!< EnergyPlus id of the Surface
@@ -404,8 +420,14 @@ public:
         temperature.clear();
         environmentalTemperature.clear();
         hc.clear();
+        bipvElectricProduction.clear();
+        bipvTcellCelsius.clear();
+        bipvTbpCelsius.clear();
+        bipvTosCelsius.clear();
+        bipvTgoCelsius.clear();
+        bipvElectricEfficiency.clear();
     }
-
+		
     uint64_t getId() const { return id; }
     string getKey() { return key; }
     void setKey(string value) { key=value; }
@@ -640,11 +662,11 @@ public:
     float getTotalInternalIlluminance1() { return illuminance1.back() + internallyReflectedIlluminance.back(); }
 
     // gets the PV production
-    float getPVElectricProduction(float Tout) {
-        pvProduction.push_back(0.f);
-        if (pvPanel != NULL) {
-            pvProduction.back() += pvRatio*area*shortWaveIrradiance_IAM*pvPanel->getMaxPowerEfficiency(shortWaveIrradiance_IAM, Tout);
-        }
+    float getPVElectricProduction(float Tout) {␊
+        pvProduction.push_back(0.f);␊
+        if (pvPanel != NULL) {␊
+            pvProduction.back() += pvRatio*area*shortWaveIrradiance_IAM*pvPanel->getMaxPowerEfficiency(shortWaveIrradiance_IAM, Tout);␊
+        }␊
         if (pvtPanel != NULL) {
             pvProduction.back() += pvtRatio*area*shortWaveIrradiance_IAM*pvtPanel->getMaxPowerEfficiency(shortWaveIrradiance_IAM, Tout);
         }
@@ -652,6 +674,58 @@ public:
     }
     float getPVElectricProduction(unsigned int it) { if (pvProduction.empty()) return std::numeric_limits<float>::quiet_NaN(); else return pvProduction.at(it); }
     void erasePVElectricProduction(unsigned int keepValue) { pvProduction.erase(pvProduction.begin(),pvProduction.end()-min(keepValue,(unsigned int)pvProduction.size())); }
+
+    // gets the BIPV/T electrical production (W)
+    void recordBipvElectricProduction(float value) { bipvElectricProduction.push_back(value); }
+    float getBipvElectricProduction(unsigned int it) {
+        if (bipvElectricProduction.empty()) return std::numeric_limits<float>::quiet_NaN();
+        else return bipvElectricProduction.at(it);
+    }
+    void eraseBipvElectricProduction(unsigned int keepValue) {
+        bipvElectricProduction.erase(bipvElectricProduction.begin(), bipvElectricProduction.end()-min(keepValue,(unsigned int)bipvElectricProduction.size()));
+    }
+
+    void recordBipvState(float TosK, float TgoK, float TcellK, float TbpK, float etaEl) {
+        const float toCelsius = 273.15f;
+        bipvTosCelsius.push_back(TosK - toCelsius);
+        bipvTgoCelsius.push_back(TgoK - toCelsius);
+        bipvTcellCelsius.push_back(TcellK - toCelsius);
+        bipvTbpCelsius.push_back(TbpK - toCelsius);
+        bipvElectricEfficiency.push_back(etaEl);
+    }
+
+    float getBipvTos(unsigned int it) const {
+        if (bipvTosCelsius.empty()) return std::numeric_limits<float>::quiet_NaN();
+        return bipvTosCelsius.at(it);
+    }
+
+    float getBipvTgo(unsigned int it) const {
+        if (bipvTgoCelsius.empty()) return std::numeric_limits<float>::quiet_NaN();
+        return bipvTgoCelsius.at(it);
+    }
+
+    float getBipvTcell(unsigned int it) const {
+        if (bipvTcellCelsius.empty()) return std::numeric_limits<float>::quiet_NaN();
+        return bipvTcellCelsius.at(it);
+    }
+
+    float getBipvTbp(unsigned int it) const {
+        if (bipvTbpCelsius.empty()) return std::numeric_limits<float>::quiet_NaN();
+        return bipvTbpCelsius.at(it);
+    }
+
+    float getBipvElectricEfficiency(unsigned int it) const {
+        if (bipvElectricEfficiency.empty()) return std::numeric_limits<float>::quiet_NaN();
+        return bipvElectricEfficiency.at(it);
+    }
+
+    void eraseBipvState(unsigned int keepValue) {
+        bipvTosCelsius.erase(bipvTosCelsius.begin(), bipvTosCelsius.end()-min(keepValue,(unsigned int)bipvTosCelsius.size()));
+        bipvTgoCelsius.erase(bipvTgoCelsius.begin(), bipvTgoCelsius.end()-min(keepValue,(unsigned int)bipvTgoCelsius.size()));
+        bipvTcellCelsius.erase(bipvTcellCelsius.begin(), bipvTcellCelsius.end()-min(keepValue,(unsigned int)bipvTcellCelsius.size()));
+        bipvTbpCelsius.erase(bipvTbpCelsius.begin(), bipvTbpCelsius.end()-min(keepValue,(unsigned int)bipvTbpCelsius.size()));
+        bipvElectricEfficiency.erase(bipvElectricEfficiency.begin(), bipvElectricEfficiency.end()-min(keepValue,(unsigned int)bipvElectricEfficiency.size()));
+    }
 
     //Solar heater production
 //    float getSolarThermalProduction(float tOut, float windSpeed, float heaterTemp) { // Cognet: Deleted this, so that function can be called, without saving the value of the stProduction.
@@ -678,6 +752,16 @@ public:
     float getSolarThermalProduction(size_t it) { if (stProduction.empty()) return std::numeric_limits<float>::quiet_NaN(); else return stProduction.at(it); }
     void eraseSolarThermalProduction(unsigned int keepValue) { stProduction.erase(stProduction.begin(),stProduction.end()-min(keepValue,(unsigned int)stProduction.size())); }
 
+    bool hasBipvModel() const { return bipvEnabled && wallPVDefinition != NULL; }
+    float getBipvHeight() const { return bipvHeight; }
+    float getBipvWidth() const { return bipvWidth; }
+    bool hasBipvExteriorTemperatures() const { return std::isfinite(bipvTosK) && std::isfinite(bipvTgoK); }
+    double getBipvTosK() const { return bipvTosK; }
+    double getBipvTgoK() const { return bipvTgoK; }
+    void setBipvExteriorTemperatures(double TosK, double TgoK) { bipvTosK = TosK; bipvTgoK = TgoK; }
+    void clearBipvExteriorTemperatures() { bipvTosK = bipvTgoK = std::numeric_limits<double>::quiet_NaN(); }
+    const WallPVDefinition* getWallPVDefinition() const { return wallPVDefinition; }
+
     // gets the E+ id
     string getEp_id() { return ep_id; }
     void setEp_id(string value) { ep_id = value; }
@@ -698,7 +782,7 @@ public:
         composite = c;
     }
     Wall(const Surface& s):Surface(s) { computeNormalAndArea(); } // Incomplete constructor for DXF reading, do not use without completing the geometry...
-    Wall(int id, GENPoint p1, GENPoint p2, float elevation):Surface(id){
+    Wall(int id, GENPoint p1, GENPoint p2, float elevation):Surface(id){␊
         // for wall to be oriented outside, floor vertices (positive orientation) must be taken backwards
         vertices.push_back(p2);
         vertices.push_back(p1);
@@ -712,6 +796,7 @@ public:
         computeNormalAndArea();
     }
     Wall(TiXmlHandle hdl, Building* pBuilding, ostream* pLogStr=NULL);
+    float computeBipvHeatingGain(class Zone& zone, float Tout, float vwind);
     void clear() {
         lowerShadingState.clear(); upperShadingState.clear();
         Surface::clear();
@@ -981,3 +1066,4 @@ public:
 };
 
 #endif
+
