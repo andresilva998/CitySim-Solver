@@ -3,6 +3,11 @@
 #include "district.h"
 #include "building.h"
 #include "models.h"
+#include <algorithm>
+
+#include <array>
+#include <cmath>
+#include <limits>
 #include "occupants.h"
 #include "scene.h"
 
@@ -367,15 +372,15 @@ double Zone2N::getKappa1() {
 
 }
 
-void Zone2N::setTos(float Tout) {
-    // define the surface temperature per surface
-    for (size_t i=0; i<walls.size(); ++i) {
-        float wallTemperature = ( Kw1*Tw + walls[i]->get_hc()*Tout
-                                  +walls[i]->getShortWaveIrradiance()*(1.-walls[i]->getShortWaveReflectance_opaque())
-                                  +walls[i]->get_hr()*walls[i]->getEnvironmentalTemperature() )
-                                / (Kw1 + walls[i]->get_hc() + walls[i]->get_hr());
-        walls[i]->setTemperature(wallTemperature);
-    }
+void Zone2N::setTos(float Tout) {␊
+    // define the surface temperature per surface␊
+    for (size_t i=0; i<walls.size(); ++i) {␊
+        float wallTemperature = ( Kw1*Tw + walls[i]->get_hc()*Tout␊
+                                  +walls[i]->getShortWaveIrradiance()*(1.-walls[i]->getShortWaveReflectance_opaque())␊
+                                  +walls[i]->get_hr()*walls[i]->getEnvironmentalTemperature() )␊
+                                / (Kw1 + walls[i]->get_hc() + walls[i]->get_hr());␊
+        walls[i]->setTemperature(wallTemperature);␊
+    }␊
     for (size_t i=0; i<roofs.size(); ++i) {
         float roofTemperature = ( roofs[i]->getKr()*Ta.back() + roofs[i]->get_hc()*Tout
                                   +roofs[i]->getShortWaveIrradiance()*(1.-roofs[i]->getShortWaveReflectance_opaque())
@@ -383,6 +388,284 @@ void Zone2N::setTos(float Tout) {
                                 / (roofs[i]->getKr() + roofs[i]->get_hc() + roofs[i]->get_hr());
         roofs[i]->setTemperature(roofTemperature);
     }
+}
+
+float Zone2N::computeBipvHeatingGain(Wall& wall, float Tout, float vwind) {
+    // Non-BIPV/T walls keep using the legacy wall balance; no special heating term.
+    if (!wall.hasBipvModel()) {
+        wall.clearBipvExteriorTemperatures();
+        wall.recordBipvElectricProduction(0.f);
+        return 0.f;
+    }
+
+    const WallPVDefinition& pv = *wall.getWallPVDefinition();
+    const double sigma = 5.670374419e-8;
+    const double dt = 3600.0; // fixed timestep for the BIPV/T model
+
+    // convert temperatures to Kelvin for nonlinear terms
+    const double TaK = getTa() + 273.15;
+    const double ToutK = Tout + 273.15;
+
+    const double Awall = max(1e-6, static_cast<double>(wall.getWallArea()));
+    const double pvratio = static_cast<double>(wall.getPVRatio());
+    const double L = max(0.1f, wall.getBipvHeight());
+    const double w = max(0.01f, wall.getBipvWidth());
+    const double e = max(1e-4, static_cast<double>(pv.eair));
+
+    // solar and infrared terms (per wall)
+    const double Qsun1 = Awall * (wall.getShortWaveIrradiance() * (1.0 - wall.getShortWaveReflectance_opaque())
+                                  + wall.get_hr() * wall.getEnvironmentalTemperature());
+    const double envTempK = wall.getEnvironmentalTemperature() + 273.15;
+    const double wallLongWaveArea = (1.0 - pvratio) * Awall;
+    const double pvLongWaveArea = pvratio * Awall;
+    const double hr_env = wall.get_hr();
+    const double Qsun2 = wall.getGlazingRatio() * wall.getArea()
+                         * (wall.getGlazingGvalue(wall.getBeamAngle()) * wall.getBeamIrradiance()
+                            + wall.getGlazingGvalueHemispherical()
+                              * (wall.getShortWaveIrradiance() - wall.getBeamIrradiance()))
+                         * (0.15f + 0.85f * wall.getLowerShadingState());
+
+    const double rho_air_base = 101325.0 / (287.05 * TaK);
+
+    // Newton–Raphson state initialisation (Kelvin for temperatures).
+    // The convective coefficients start from the façade hc while the airflow begins at the measured
+    // perpendicular wind or a small positive value to keep Jacobian entries finite. The zone air
+    // temperature estimate uses the latest Ta() sample so the solver works with current-step values.
+    array<double,13> x = {ToutK,                             // T_os
+                          TaK,                               // T_bp
+                          TaK,                               // T_cell
+                          TaK,                               // T_gi
+                          ToutK,                             // T_go
+                          wall.get_hc(),                     // h_os initial guess
+                          wall.get_hc(),                     // h_bp initial guess
+                          TaK,                               // T_air,mean
+                          TaK,                               // T_air,out
+                          TaK,                               // X
+                          0.1,                               // Y
+                          std::max<double>(0.1, vwind),      // V_air
+                          0.0};                              // H
+
+    auto computeF = [&](const array<double,13>& xin, array<double,13>& F) {
+        const double Tos = xin[0];
+        const double Tbp = xin[1];
+        const double Tcell = xin[2];
+        const double Tgi = xin[3];
+        const double Tgo = xin[4];
+        const double hos = max(0.0, xin[5]);
+        const double hbp = max(0.0, xin[6]);
+        const double Tair = xin[7];
+        const double TairOut = xin[8];
+        const double Xflow = xin[9];
+        const double Yflow = xin[10];
+        const double Vair = max(1e-6, xin[11]);
+        const double H = xin[12];
+
+        // air properties at mean temperature
+        const double rho_air = 101325.0 / (287.05 * max(1.0, Tair));
+        const double cp_air = 1005.0;
+        const double k_air = 2.873e-3 + 7.76e-8 * Tair;
+        const double nu_air = 3.723e-6 + 4.94e-8 * Tair;
+        const double beta = 1.0 / max(1.0, Tair);
+        const double alpha_air = k_air / (rho_air * cp_air);
+
+        const double Ra_os = 9.81 * beta * fabs(Tos - Tair) * pow(e, 3.0) / (alpha_air * nu_air);
+        const double Ra_bp = 9.81 * beta * fabs(Tbp - Tair) * pow(e, 3.0) / (alpha_air * nu_air);
+
+        auto natural_hos = [&](double Ra_os) {
+            if (Ra_os <= 0.) return 0.0;
+            double ratio_os = Ra_os * e / L;
+            double invNu = (144.0 / (ratio_os * ratio_os)) + (2.87 / sqrt(max(1e-12, ratio_os)));
+            return (invNu <= 0.) ? 0.0 : (1.0 / sqrt(invNu)) * k_air / e;
+        };
+
+        auto natural_hbp = [&](double Ra_bp) {
+            if (Ra_bp <= 0.) return 0.0;
+            double ratio_bp = Ra_bp * e / L;
+            double invNu = (144.0 / (ratio_bp * ratio_bp)) + (2.87 / sqrt(max(1e-12, ratio_bp)));
+            return (invNu <= 0.) ? 0.0 : (1.0 / sqrt(invNu)) * k_air / e;
+        };
+
+
+        const double hos_nat = natural_hos(Ra_os);
+        const double hbp_nat = natural_hbp(Ra_bp);
+
+        const double Ke = std::max<double>(0.0, getKe());
+        const double k2 = std::max<double>(1e-6, Ki);
+        const double Cv = 0.27;
+        const double Cd = 0.65;
+
+        // Equation 1
+        double QirWall = hr_env * wallLongWaveArea * (envTempK - Tos);
+        double QirPv = hr_env * pvLongWaveArea * (envTempK - Tgo);
+
+        double A11 = pow(Kw1, 2.0) * dt / (max(1e-6f, Cw) + dt * (k2 + Kw1)) - Kw1 - Ke * (1.0 - pvratio);
+        double B1 = Ke * (1.0 - pvratio) * ToutK + Qsun1 * (1.0 - pvratio) + QirWall
+                    + Kw1 / (max(1e-6f, Cw)+dt * (k2 + Kw1)) * ((Tw + 273.15) + dt * k2 * TaK + dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lr));
+        double C1 = hos * Awall * pvratio * (Tair - Tos) + pvratio * Awall * sigma * (pv.epsilonbp * pow(Tbp, 4.0) - pv.epsilonos * pow(Tos, 4.0));
+        F[0] = A11 * Tos + B1 + C1;
+
+        // Equation 2
+        double A22 = -pv.kbp / max(1e-6f, pv.ebp);
+        double A23 = pv.kbp / max(1e-6f, pv.ebp);
+        double C2 = hbp * (Tair - Tbp) + sigma * (pv.epsilonos * pow(Tos, 4.0) - pv.epsilonbp * pow(Tbp, 4.0));
+        F[1] = A22 * Tbp + A23 * Tcell + C2;
+
+        // Equation 3
+        double A32 = (pv.kbp / max(1e-6f, pv.ebp)) * Awall * pvratio;
+        double A33 = -((pv.alfacsw * pv.taugsw * pv.taugsw * Qsun1 * pvratio + pv.alfacir * pv.taugir * pv.taugir * QirPv) * pv.nuetamp)
+                     - (pv.kbp / max(1e-6f, pv.ebp)) * Awall * pvratio - (pv.keva / max(1e-6f, pv.eeva)) * Awall * pvratio;
+        double A34 = (pv.keva / max(1e-6f, pv.eeva)) * Awall * pvratio;
+        double B3 = (pv.alfacsw * pv.taugsw * pv.taugsw * Qsun1 * pvratio + pv.alfacir * pv.taugir * pv.taugir * QirPv)
+                    - (pv.alfacsw * pv.taugsw * pv.taugsw * Qsun1 * pvratio + pv.alfacir * pv.taugir * pv.taugir * QirPv)
+                      * (pv.etaeleref - pv.nuetamp * pv.Tcellref);
+        F[2] = A32 * Tbp + A33 * Tcell + A34 * Tgi + B3;
+
+        // Equation 4
+        double A43 = pv.keva / max(1e-6f, pv.eeva);
+        double A44 = -pv.kairg / max(1e-6f, pv.eairg) - pv.keva / max(1e-6f, pv.eeva);
+        double A45 = pv.kairg / max(1e-6f, pv.eairg);
+        double C4 = sigma * (pv.epsilongo * pow(Tgo, 4.0) - pv.epsilongi * pow(Tgi, 4.0));
+        F[3] = A43 * Tcell + A44 * Tgi + A45 * Tgo + C4;
+
+        // Equation 5
+        double A55 = -Ke * pvratio - pv.kairg / max(1e-6f, pv.eairg) * Awall * pvratio;
+        double A54 = pv.kairg / max(1e-6f, pv.eairg) * Awall * pvratio;
+        double B5 = Ke * ToutK * pvratio + (pv.algagsw * Qsun1 * pvratio + pv.algagir * QirPv);
+        double C5 = sigma * Awall * pvratio * (pv.epsilongi * pow(Tgi, 4.0) - pv.epsilongo * pow(Tgo, 4.0));
+        F[4] = A55 * Tgo + A54 * Tgi + B5 + C5;
+
+        // Equations 6 and 7
+        double A612 = (getTa() <= Tout) ? 0.0 : -0.85 * 1.33;
+        double A712 = (getTa() <= Tout) ? 0.0 : -0.85 * 1.33;
+        double B6 = (getTa() <= Tout) ? 0.0 : -0.85 * 1.959;
+        double B7 = B6;
+        double C6 = (getTa() <= Tout) ? - hos_nat : -0.85 * 1.517 * pow(fabs(Tos-Tair), 1/3);
+        double C7 = (getTa() <= Tout) ? - hbp_nat : -0.85 * 1.517 * pow(fabs(Tbp-Tair), 1/3);
+        F[5] = hos + A612 * Vair + B6 + C6;
+        F[6] = hbp + A712 * Vair + B7 + C7;
+
+        // Equation 8
+        double C8 = (getTa() <= Tout ? -(TaK - Xflow) : -(ToutK - Xflow)) * ((1.0 - exp(-Yflow * L)) / max(1e-6, Yflow * L));
+        F[7] = Tair + C8;
+
+        // Equation 9
+        double C9 = (getTa() <= Tout ? -(TaK - Xflow) : -(ToutK - Xflow)) * exp(-Yflow * L);
+        F[8] = TairOut + C9;
+
+        // Equation 10
+        F[9] = Xflow - (hos * Tos + hbp * Tbp) / max(1e-6, hos + hbp);
+
+        // Equation 11
+        F[10] = Yflow - (hos + hbp) / (e * Vair * rho_air * cp_air);
+
+        // Equation 12
+        double buoyancy = (getTa() <= Tout) ? fabs(Tair - TaK) / max(1e-6, TaK) : fabs(Tair - ToutK) / max(1e-6, ToutK);
+        double C12 = -Cd * e * w * sqrt(max(0.0, 2.0 * 9.81 * L * buoyancy));
+        double B12 = (getTa() <= Tout) ? 0.0 : -Cv * e * w * vwind;
+        F[11] = C12 + B12 + Vair;
+
+        // Equation 13 – heating balance for the zone
+        const double wallDenom = fabs(dt * (-k2 - Kw1) - Cw) < 1e-6 ? (dt * (-k2 - Kw1) - Cw >= 0 ? 1e-6 : -1e-6)
+                                                                     : (dt * (-k2 - Kw1) - Cw);
+        double A131 = -(k2 * dt * Kw1) / wallDenom;
+        const bool heatingMode = (TairOut > TaK) && (TaK < 20.0);
+        double A1312 = heatingMode ? -e * w * rho_air_base * cp_air * TaK : 0.0;
+        double B13 = ((-Ci / dt) - getUA() - k2 - (k2 * k2 * dt) / wallDenom)
+                     * (TaK) + (Ci / dt) * (Ta.back() + 273.15)
+                     + (getUA() * ToutK + (k2 / std::max<double>(1e-6, Kw1)) * (Qsun2 * Ww + Lr) + Qsun2 * Wa + Lc)
+                     - k2 * (Cw * (Tw + 273.15) - dt * (k2 / max(1e-6, Ki)) * (Qsun2 * Ww + Lc)) / wallDenom;
+        double C13 = heatingMode ? e * w * rho_air_base * cp_air * TairOut * Vair : 0.0;
+        F[12] = A131 * Tos + A1312 * Vair + B13 + C13 + H;
+    };
+
+    array<double,13> F{};
+
+    const unsigned int maxIter = 20;
+    // Newton–Raphson loop with finite-difference Jacobian evaluation.
+    for (unsigned int iter = 0; iter < maxIter; ++iter) {
+        computeF(x, F);
+
+        bool invalidState = false;
+        for (double v : F) {
+            if (!std::isfinite(v)) { invalidState = true; break; }
+        }
+        for (double v : x) {
+            if (!std::isfinite(v)) { invalidState = true; break; }
+        }
+        if (invalidState) {
+            const float nanVal = std::numeric_limits<float>::quiet_NaN();
+            wall.recordBipvState(nanVal, nanVal, nanVal, nanVal, 0.f);
+            wall.clearBipvExteriorTemperatures();
+            wall.recordBipvElectricProduction(0.f);
+            return 0.f;
+        }
+
+        double norm = 0.0;
+        for (double v : F) norm = max(norm, fabs(v));
+        if (norm < 1e-3) break;
+
+        double J[13][13];
+        const double eps = 1e-4;
+        for (unsigned int j = 0; j < 13; ++j) {
+            array<double,13> xpert = x;
+            double delta = eps * max(1.0, fabs(x[j]));
+            xpert[j] += delta;
+            array<double,13> Fpert{};
+            computeF(xpert, Fpert);
+            for (unsigned int i = 0; i < 13; ++i) {
+                J[i][j] = (Fpert[i] - F[i]) / delta;
+            }
+        }
+
+        // solve J * dx = F using Gaussian elimination
+        double dx[13];
+        double A[13][14];
+        for (unsigned int i = 0; i < 13; ++i) {
+            for (unsigned int j = 0; j < 13; ++j) A[i][j] = J[i][j];
+            A[i][13] = F[i];
+        }
+
+        for (unsigned int k = 0; k < 13; ++k) {
+            // pivot
+            unsigned int pivot = k;
+            for (unsigned int i = k + 1; i < 13; ++i) {
+                if (fabs(A[i][k]) > fabs(A[pivot][k])) pivot = i;
+            }
+            if (fabs(A[pivot][k]) < 1e-12) continue;
+            if (pivot != k) {
+                for (unsigned int j = k; j < 14; ++j) swap(A[k][j], A[pivot][j]);
+            }
+            double diag = A[k][k];
+            for (unsigned int j = k; j < 14; ++j) A[k][j] /= diag;
+            for (unsigned int i = 0; i < 13; ++i) {
+                if (i == k) continue;
+                double factor = A[i][k];
+                for (unsigned int j = k; j < 14; ++j) A[i][j] -= factor * A[k][j];
+            }
+        }
+
+        for (unsigned int i = 0; i < 13; ++i) dx[i] = A[i][13];
+
+        for (unsigned int i = 0; i < 13; ++i) x[i] -= dx[i];
+    }
+
+    wall.setBipvExteriorTemperatures(x[0], x[4]);
+
+    const double QirPvTerm = hr_env * pvLongWaveArea * (envTempK - x[4]);
+
+    // BIPV/T electrical production (per timestep) follows the explicit balance:
+    //   E_el = pvratio * (α_c,sw τ_g,sw^2 Q_sun1 + α_c,ir τ_g,ir^2 Q_ir,PV) * η_el,
+    //   η_el = max(0, η_el,ref − ν_etamp (T_cell − T_cell,ref)).
+    // The first term represents the irradiance incident on the PV fraction of the façade
+    // (shortwave + longwave), while η_el applies the temperature-dependent electrical efficiency.
+    const double incidentSolar = pvratio * (pv.alfacsw * pv.taugsw * pv.taugsw * Qsun1
+                                            + pv.alfacir * pv.taugir * pv.taugir * QirPvTerm);
+    double etaElectric = pv.etaeleref - pv.nuetamp * (x[2] - pv.Tcellref);
+    etaElectric = std::max(0.0, etaElectric);
+    wall.recordBipvState(static_cast<float>(x[0]), static_cast<float>(x[4]), static_cast<float>(x[2]), static_cast<float>(x[1]), static_cast<float>(etaElectric));
+    wall.recordBipvElectricProduction(static_cast<float>(incidentSolar * etaElectric));
+
+    return static_cast<float>(x[12]);
 }
 
 // Zone3N
@@ -646,3 +929,4 @@ void ZoneN::setTos(float Tout) {
         roofs[i]->setTemperature(roofTemperature);
     }
 }
+
