@@ -231,7 +231,7 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
     }
 
     // inverse with LAPACK
-    inverse_square_matrix(Asecond,mp);
+    inverse_square_matrix(Asecond.data(), mp);
     // end of inverse with LAPACK
 
     double AsecondPhi[mp];
@@ -309,7 +309,7 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
       bprime[i]=T[i]+dt*b[i];
     }
 
-    solve_Ax_equal_b(Aprime,bprime,NP);
+    solve_Ax_equal_b(Aprime.data(), bprime.data(), NP);
 
     for (unsigned int i=0; i<pBuilding->getnZones(); i++) {
             pBuilding->getZone(i)->setTaForeseen(bprime[Thermal_getMatrixPosition(pBuilding,i)]);
@@ -449,7 +449,7 @@ void Model::ThermalStepImplicitTemperature(Building *pBuilding, Climate* pClimat
       bprime[i]=T[i]+dt*b[i];
     }
 
-    solve_Ax_equal_b(Aprime,bprime,NP);
+    solve_Ax_equal_b(Aprime.data(), bprime.data(), NP);
 
     for (unsigned int i=0; i<pBuilding->getnZones(); i++) {
         // saves the results in the zone (Ta,Tw, eventually Tw2)
@@ -529,7 +529,7 @@ void Model::ThermalStepImplicitTemperature(Ground *pGround, Climate* pClimate, u
     // evapotranspiration (ET) modification term by GU
     Aprime[0] = pGround->getCapacitance(0,0) - dt*( -pGround->getk(1) - pGround->getG(0)*(pGround->get_hr()+pGround->get_hc())/((1.+Lambda)*pGround->getG(0)+pGround->get_hr()+pGround->get_hc()) );
 
-    solve_Ax_equal_b(Aprime,bprime,NP);
+    solve_Ax_equal_b(Aprime.data(), bprime.data(), NP);
 
     // saves the results in the ground
     for (int i=0; i<NP; ++i) {
@@ -3826,6 +3826,7 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
 
 
