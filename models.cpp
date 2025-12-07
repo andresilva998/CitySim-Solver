@@ -92,7 +92,7 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
 
     std::vector<double> TnInf(np, 0.0), TnSup(np, 0.0);
     std::vector<double> heating(np, 0.0), cooling(np, 0.0);
-␊
+
     std::vector<double> Asecond(mp * mp, 0.0);
     std::vector<double> phi(mp, 0.0);
 
@@ -192,9 +192,9 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
             for (unsigned int k=0; k<pBuilding->getZonenNodes(i); ++k) {
                 // put the values in the G matrix␊
                 mat(Thermal_getMatrixPosition(pBuilding,i)+j, Thermal_getMatrixPosition(pBuilding,i)+k) = pBuilding->getZone(i)->getVariableMatrixElement(j,k);
-            }␊
-        }␊
-    }␊
+            }
+        }
+    }
 
     // shows the conductance matrix
     //cout << "variable conductance matrix: " << G << endl;
@@ -203,8 +203,8 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
         for (unsigned int j=0;j<NP;j++) {
             // G1 contains the (timely) fixed conductances of the building, that are added to the variable conductances initialised in G
             mat(i, j) += pBuilding->getG1(i,j); // previously G[i][j]=G1[i][j]+G2[i][j]
-        }␊
-    }␊
+        }
+    }
 	
     // shows the conductance matrix
     //cout << "variable + fixed conductance matrix: " << G << endl;
@@ -223,10 +223,10 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
             phi[Thermal_getSubMatrixPosition(pBuilding ,i)+j-1]=T[Thermal_getMatrixPosition(pBuilding,i)+j] + dt*b[Thermal_getMatrixPosition(pBuilding,i)+j];
             for (int k=0;k<np;k++) {
                 phi[Thermal_getSubMatrixPosition(pBuilding ,i)+j-1]+=dt*mat(Thermal_getMatrixPosition(pBuilding,i)+j, Thermal_getMatrixPosition(pBuilding,k))*pBuilding->getZone(k)->getTmin(day,hour);
-                for (unsigned int l=1; l< pBuilding->getZonenNodes(k); l++) {␊
+                for (unsigned int l=1; l< pBuilding->getZonenNodes(k); l++) {
                     Asecond[Thermal_getSubMatrixPosition(pBuilding ,i)+j-1 + mp*(Thermal_getSubMatrixPosition(pBuilding,k)+l-1)]=dt*mat(Thermal_getMatrixPosition(pBuilding,i)+j, Thermal_getMatrixPosition(pBuilding,k)+l)-pBuilding->getC(Thermal_getMatrixPosition(pBuilding,i)+j,Thermal_getMatrixPosition(pBuilding,k)+l);
-                }␊
-            }␊
+                }
+            }
         }
     }
 
@@ -247,7 +247,7 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
 	for (int i=0;i<np;i++) {
         for (unsigned int j=1; j< pBuilding->getZonenNodes(i); j++) {
                 heating[i]+=dt*mat(Thermal_getMatrixPosition(pBuilding,i), Thermal_getMatrixPosition(pBuilding,i)+j)*AsecondPhi[Thermal_getSubMatrixPosition(pBuilding ,i)+j-1];
-        }␊
+        }
         }
     // End of calculation of heating needs to reach TsetInf
 
@@ -266,9 +266,9 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
 
             for (int k=0;k<np;k++) {
                 phi[Thermal_getSubMatrixPosition(pBuilding ,i)+j-1]+=dt*mat(Thermal_getMatrixPosition(pBuilding,i)+j, Thermal_getMatrixPosition(pBuilding,k))*pBuilding->getZone(k)->getTmax(day,hour);
-            }␊
-        }␊
-    }␊
+            }
+        }
+    }
 
     // Product of Asecond^{-1} with phi
 	for (int i=0;i<mp;i++) {
@@ -282,7 +282,7 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
 	for (int i=0;i<np;i++) {
         for (unsigned int j=1; j< pBuilding->getZonenNodes(i); j++) {
                 cooling[i]+=dt*mat(Thermal_getMatrixPosition(pBuilding,i), Thermal_getMatrixPosition(pBuilding,i)+j)*AsecondPhi[Thermal_getSubMatrixPosition(pBuilding,i)+j-1];
-        }␊
+        }
         }
     // End of calculation of cooling needs to reach TsetSup
 
@@ -302,12 +302,12 @@ void Model::ThermalStepImplicit(Building *pBuilding, Climate *pClimate, unsigned
     // sauvegarde de la tempÈrature prÈvue (qui sera la bonne si tout va bien)
     std::vector<double> Aprime(NP * NP, 0.0);
     std::vector<double> bprime(NP, 0.0);
-    for (unsigned int i=0;i<NP;i++) {␊
-      for (unsigned int j=0;j<NP;j++) {␊
+    for (unsigned int i=0;i<NP;i++) {
+      for (unsigned int j=0;j<NP;j++) {
         Aprime[i+NP*j]=pBuilding->getC(i,j)-dt*mat(i, j);
-      }␊
-      bprime[i]=T[i]+dt*b[i];␊
-    }␊
+      }
+      bprime[i]=T[i]+dt*b[i];
+    }
 
     solve_Ax_equal_b(Aprime,bprime,NP);
 
@@ -428,26 +428,26 @@ void Model::ThermalStepImplicitTemperature(Building *pBuilding, Climate* pClimat
             for (unsigned int k=0; k<pBuilding->getZonenNodes(i); ++k) {
                 // put the values in the G matrix␊
                 mat(Thermal_getMatrixPosition(pBuilding,i)+j, Thermal_getMatrixPosition(pBuilding,i)+k) = pBuilding->getZone(i)->getVariableMatrixElement(j,k);
-            }␊
-        }␊
-    }␊
+            }
+        }
+    }
 
     for (unsigned int i=0;i<NP;i++) {
         for (unsigned int j=0;j<NP;j++) {
             // G1 contains the (timely) fixed conductances of the building, that are added to the variable conductances initialised in G
             mat(i, j) += pBuilding->getG1(i,j); // previously G[i][j]=G1[i][j]+G2[i][j]
-        }␊
-    }␊
+        }
+    }
 
     // evaluation of the temperatures
     std::vector<double> Aprime(NP * NP, 0.0);
     std::vector<double> bprime(NP, 0.0);
-    for (unsigned int i=0;i<NP;i++) {␊
-      for (unsigned int j=0;j<NP;j++) {␊
+    for (unsigned int i=0;i<NP;i++) {
+      for (unsigned int j=0;j<NP;j++) {
         Aprime[i+NP*j]=pBuilding->getC(i,j)-dt*mat(i, j);
-      }␊
-      bprime[i]=T[i]+dt*b[i];␊
-    }␊
+      }
+      bprime[i]=T[i]+dt*b[i];
+    }
 
     solve_Ax_equal_b(Aprime,bprime,NP);
 
@@ -709,7 +709,7 @@ void Model::ThermalStepExplicitTemperature(Building *pBuilding, Climate* pClimat
     std::vector<double> G(NP * NP, 0.0);
     auto mat = [&](unsigned int row, unsigned int col) -> double& { return G[row * NP + col]; };
     std::vector<double> b(NP, 0.0), Tc(NP, 0.0), T(NP, 0.0);
-␊
+
     // propre à la résolution explicite
     std::vector<double> Texpl(NP, 0.0);
 
@@ -786,24 +786,24 @@ void Model::ThermalStepExplicitTemperature(Building *pBuilding, Climate* pClimat
                 for (unsigned int k=0; k<pBuilding->getZonenNodes(i); ++k) {
                     // put the values in the G matrix␊
                     mat(Thermal_getMatrixPosition(pBuilding,i)+j, Thermal_getMatrixPosition(pBuilding,i)+k) = pBuilding->getZone(i)->getVariableMatrixElement(j,k);
-                }␊
-            }␊
-        }␊
+                }
+            }
+        }
 
         for (unsigned int i=0;i<NP;i++) {
             for (unsigned int j=0;j<NP;j++) {
                 // G1 contains the (timely) fixed conductances of the building, that are added to the variable values initialised in G
                 mat(i, j) += pBuilding->getG1(i,j); // previously G[i][j]=G1[i][j]+G2[i][j]
-            }␊
-        }␊
+            }
+        }
 
         // EXPLICIT Scheme
         for (unsigned int i=0;i<NP;++i) {
-          Texpl[i]=Tc[i]+dt2*b[i];␊
-              for (unsigned int j=0;j<NP;++j) {␊
+          Texpl[i]=Tc[i]+dt2*b[i];
+              for (unsigned int j=0;j<NP;++j) {
                 Texpl[i]+=dt2*mat(i, j)*T[j];
-              }␊
-        }␊
+              }
+        }
 
         // save the output values
         for (unsigned int i=0; i<pBuilding->getnZones(); ++i) {
@@ -3826,6 +3826,7 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
 
 
