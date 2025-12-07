@@ -3623,7 +3623,11 @@ void XmlScene::simulate() {
 
     // pre-conditioning period
     int warmUpDays = computeWarmUp();
-    logStream << "Pre-conditioning period: " << warmUpDays << " days" << endl;
+    logStream << "Pre-conditioning period: " << warmUpDays << " days";
+    if (warmUpDays > 0) {
+        logStream << " (includes BIPV/T heating gains to stabilise PV cavity temperatures)";
+    }
+    logStream << endl;
     for (int day = -warmUpDays; day <= -1; ++day) {
 
         unsigned int preDay = (day+beginDay+364)%365+1;
