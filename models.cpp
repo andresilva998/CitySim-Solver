@@ -1,6 +1,7 @@
 #include "models.h"
 
 #include <cmath>
+#include <vector>
 
 #include "climate.h"
 #include "scene.h"
@@ -19,9 +20,10 @@ int Model::ThermalWarmUpTime(Building *pBuilding) {
     // liens
     unsigned int NP = pBuilding->getnNodes();
 
+    if (NP == 0) return 0;
+
     // initialise the Atilde matrix
-    double Atilde[NP*NP]; // new for dgesv
-    for (unsigned int i=0;i<NP*NP;++i) Atilde[i]=0.;
+    std::vector<double> Atilde(static_cast<size_t>(NP) * NP, 0.0); // new for dgesv
 
     // initialise calculation matrix
     for (unsigned int i=0; i<pBuilding->getnZones(); ++i) {
@@ -46,9 +48,8 @@ int Model::ThermalWarmUpTime(Building *pBuilding) {
     //print_matrix("Atilde - 2",NP,NP,Atilde,NP);
 
     // we solve the problem Atilde * tau = (-1, ..., -1)
-    double btilde[NP];
-    for (unsigned int i=0; i<NP; ++i) btilde[i] = -1.;
-    solve_Ax_equal_b(Atilde,btilde,NP);
+    std::vector<double> btilde(NP, -1.0);
+    solve_Ax_equal_b(Atilde.data(), btilde.data(), NP);
 
     // takes the biggest warm up time of all the nodes
     int warmUpDays = 0;
@@ -3823,6 +3824,7 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
 
 
