@@ -527,7 +527,7 @@ void Model::ThermalStepImplicitTemperature(Ground *pGround, Climate* pClimate, u
     }
 
     // evapotranspiration (ET) modification term by GU
-    Aprime[0] = pGround->getCapacitance(0,0) - dt*( -pGround->getk(1) - pGround->getG(0)*(pGround->get_hr()+pGround->get_hc())/((1.+Lambda)*pGround->getG(0)+pGround->get_hr()+pGround->get_hc()) );␊
+    Aprime[0] = pGround->getCapacitance(0,0) - dt*( -pGround->getk(1) - pGround->getG(0)*(pGround->get_hr()+pGround->get_hc())/((1.+Lambda)*pGround->getG(0)+pGround->get_hr()+pGround->get_hc()) );
 
     solve_Ax_equal_b(Aprime, bprime, NP);
 	
@@ -3826,6 +3826,7 @@ void Model::computeCMIndices(Building* pBuilding, Climate* pClimate, unsigned in
 
     return;
 }
+
 
 
 
