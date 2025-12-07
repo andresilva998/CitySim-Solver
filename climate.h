@@ -88,35 +88,35 @@ public :
     string getLocation() { return location; }
 
     float getToutCelsius(unsigned int day, unsigned int hour)   { return Tout.at(checkIndex(day,hour,Tout,"outdoor temperature")); }
-    float getToutCelsius(unsigned int day, unsigned int hour, float height) {␊
-        for (map<float,vector<float> >::iterator it=Ta.begin(); it!=Ta.end();++it) {␊
+    float getToutCelsius(unsigned int day, unsigned int hour, float height) {
+        for (map<float,vector<float> >::iterator it=Ta.begin(); it!=Ta.end();++it) {
             if (height < it->first) return it->second.at(checkIndex(day,hour,it->second,"height-dependant outdoor temperature"));
-        }␊
-        return NAN;␊
-    }␊
+        }
+        return NAN;
+    }
     float getToutCelsius(int step)                              { return Tout.at(checkStepIndex(step,Tout,"outdoor temperature")); }
 
     float getTgroundCelsius(unsigned int day, unsigned int hour, float depth=0.f, float alpha=(0.25e-6f/(0.89f*1.6f))*24.f*3600.f, float depthMax=0.f); // default alpha value taken for clay (Arya, 2001) in m²/day
 
     float getWindSpeed(unsigned int day, unsigned int hour)     { return windSpeed.at(checkIndex(day,hour,windSpeed,"wind speed")); }
     float getWindSpeed(unsigned int step)                       { return windSpeed.at(checkStepIndex(step,windSpeed,"wind speed")); }
-    float getWindSpeed(unsigned int day, unsigned int hour, float height) {␊
-        for (map<float,vector<float> >::iterator it=FF.begin(); it!=FF.end();++it) {␊
+    float getWindSpeed(unsigned int day, unsigned int hour, float height) {
+        for (map<float,vector<float> >::iterator it=FF.begin(); it!=FF.end();++it) {
             if (height < it->first) return it->second.at(checkIndex(day,hour,it->second,"height-dependant wind speed"));
-        }␊
-        return NAN;␊
-    }␊
+        }
+        return NAN;
+    }
     float getWindDirection(unsigned int day, unsigned int hour) { return windDirection.at(checkIndex(day,hour,windDirection,"wind direction")); }
-    float getWindDirection(unsigned int day, unsigned int hour, float height) {␊
-        for (map<float,vector<float> >::iterator it=DD.begin(); it!=DD.end();++it) {␊
+    float getWindDirection(unsigned int day, unsigned int hour, float height) {
+        for (map<float,vector<float> >::iterator it=DD.begin(); it!=DD.end();++it) {
             if (height < it->first) return it->second.at(checkIndex(day,hour,it->second,"height-dependant wind direction"));
-        }␊
-        return NAN;␊
-    }␊
-␊
+        }
+        return NAN;
+    }
+
     float getRelativeHumidity(unsigned int day, unsigned int hour) { return relativeHumidity.at(checkIndex(day,hour,relativeHumidity,"relative humidity"))/100.f; } // relative humidity \in [0,1]
     float getRelativeHumidity(int step) { return relativeHumidity.at(checkStepIndex(step,relativeHumidity,"relative humidity"))/100.f; } // relative humidity \in [0,1]
-␊
+
     double getPatm(unsigned int day,unsigned int hour) { return 101325.0*exp(-(28.97/1000)*9.81*altitude/(8.3145*(Tout.at(checkIndex(day,hour,Tout,"outdoor temperature"))+273.15))); /*P=P0exp(Mgh/RT)*/ }
     double getPatm(unsigned int it) { return 101325.0*exp(-(28.97/1000)*9.81*altitude/(8.3145*(Tout.at(checkStepIndex(it,Tout,"outdoor temperature"))+273.15))); /*P=P0exp(Mgh/RT)*/ }
     float getLatitudeN()  { return latitudeN; }
@@ -129,10 +129,10 @@ public :
 
     float getTd(unsigned int step) { return Td.at(checkStepIndex(step,Td,"dew point")); }
     float getTd(unsigned int day, unsigned int hour) { return Td.at(checkIndex(day,hour,Td,"dew point")); }
-␊
+
     float getClearness(unsigned int day, unsigned int hour) { return (8.f-cloudiness.at(checkIndex(day,hour,cloudiness,"cloud cover")))/8.f; } // retourne la clearness p.r. a la nébulosité du fichier climatique en coeff et non en Oktas
     float getCloudCoverFraction(unsigned int day, unsigned int hour) { return cloudiness.at(checkIndex(day,hour,cloudiness,"cloud cover"))/8.f; } // returns the cloud cover fraction between 0 and 1
-␊
+
     float getIdh(unsigned int day, unsigned int hour) { return Idh.at(checkIndex(day,hour,Idh,"diffuse irradiance")); }
     float getIbn(unsigned int day, unsigned int hour) { return Ibn.at(checkIndex(day,hour,Ibn,"beam irradiance")); }
     float getIdh(unsigned int step){ return Idh.at(checkStepIndex(step,Idh,"diffuse irradiance")); }
@@ -200,4 +200,5 @@ public :
 
 };
 #endif
+
 
